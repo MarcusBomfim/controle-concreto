@@ -1,0 +1,30 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Ponto de entrada dos testes.
+ *
+ *   php testes/executar.php
+ *
+ * Sai com código 0 quando tudo passa e 1 quando algo falha.
+ */
+
+require __DIR__ . '/../src/autoload.php';
+require __DIR__ . '/Executor.php';
+
+$pastas = ['dominio'];
+$arquivos = [];
+
+foreach ($pastas as $pasta) {
+    $encontrados = glob(__DIR__ . '/' . $pasta . '/*.php') ?: [];
+    sort($encontrados);
+
+    $arquivos = [...$arquivos, ...$encontrados];
+}
+
+foreach ($arquivos as $arquivo) {
+    require $arquivo;
+}
+
+exit(resumo());

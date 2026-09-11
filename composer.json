@@ -1,0 +1,22 @@
+{
+    "name": "marcusbomfim/controle-concreto",
+    "description": "Controle tecnológico de concreto: concretagens, corpos de prova, ensaios de compressão e aceitação por lote conforme a NBR 12655.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.1",
+        "ext-mbstring": "*",
+        "ext-pdo": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "ControleConcreto\\": "src/"
+        }
+    },
+    "scripts": {
+        "teste": "php testes/executar.php"
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

@@ -1,0 +1,17 @@
+vendor/
+composer.lock
+
+# Banco local do SQLite
+*.sqlite
+*.sqlite3
+*.db
+
+.env
+.env.local
+
+*.log
+
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
