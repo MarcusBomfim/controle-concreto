@@ -9,19 +9,6 @@ use ControleConcreto\Dominio\Estrutura\TipoDeElemento;
 use ControleConcreto\Dominio\ExcecaoDeDominio;
 use ControleConcreto\Dominio\Obra\Obra;
 
-function lajeDeTeste(float $volume = 42.0): ElementoEstrutural
-{
-    return new ElementoEstrutural(
-        'l3-p4',
-        TipoDeElemento::Laje,
-        'Laje L3',
-        '4º pavimento',
-        ClasseDeResistencia::C30,
-        new Abatimento(100),
-        $volume,
-    );
-}
-
 grupo('Obra');
 
 teste('normaliza código e registro para maiúsculas', function (): void {

@@ -37,10 +37,12 @@ controle-concreto/
 │       ├── ExcecaoDeDominio.php
 │       ├── Obra/           # Obra
 │       ├── Concreto/       # ClasseDeResistencia, Abatimento
-│       └── Estrutura/      # ElementoEstrutural, TipoDeElemento
+│       ├── Estrutura/      # ElementoEstrutural, TipoDeElemento
+│       └── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao
 ├── testes/
 │   ├── executar.php
 │   ├── Executor.php        # executor de testes mínimo, sem PHPUnit
+│   ├── ajuda.php           # fábricas compartilhadas entre os testes
 │   └── dominio/
 ├── composer.json
 └── README.md
@@ -56,6 +58,8 @@ Quem não é da construção tropeça nos termos, então aqui vão os que o cód
 | **Classe** | C25, C30, C40… o fck expresso como classe da NBR 8953 |
 | **Abatimento** | o "slump": quanto o tronco de cone de concreto fresco abate ao ser desmoldado, em mm. Mede a consistência |
 | **Elemento estrutural** | a peça concretada: laje, pilar, viga, sapata |
+| **Concretagem** | o evento de concretar uma peça num dia; recebe os caminhões |
+| **Carga** | um caminhão-betoneira, com sua nota fiscal, volume e abatimento medido |
 | **Lote** | o conjunto de concreto julgado de uma vez, limitado por volume e por tipo de peça |
 
 ## O que o domínio já garante
@@ -66,6 +70,22 @@ Quem não é da construção tropeça nos termos, então aqui vão os que o cód
 | Elemento estrutural exige no mínimo C20; C15 só em piso e obra provisória | `ElementoEstrutural` | NBR 6118 |
 | Tolerância do abatimento cresce com o valor: ±10, ±20 ou ±30 mm | `Abatimento::toleranciaEmMm` | NBR 7212 |
 | Pilar e parede têm lote de no máximo 50 m³; laje e fundação, 100 m³ | `TipoDeElemento::volumeMaximoDoLoteEmM3` | NBR 12655 |
+| Carga com abatimento fora da faixa é devolvida | `Concretagem::receberCarga` | NBR 7212 |
+| Carga com mais de 150 min de transporte é devolvida | `Concretagem::receberCarga` | NBR 7212 |
+| Carga devolvida fica registrada e não conta como volume | `Concretagem::volumeAceitoEmM3` | — |
+| Concretagem só conclui com carga aceita; só cancela sem nenhuma | `Concretagem::concluir`, `cancelar` | — |
+
+## A concretagem
+
+Quando o caminhão chega, o canteiro faz duas coisas antes de descarregar: olha o relógio e faz o ensaio do cone. `Concretagem::receberCarga` faz as duas na mesma ordem.
+
+**O relógio.** A nota fiscal traz a hora em que a água foi adicionada na usina. A NBR 7212 dá 150 minutos para o concreto ser descarregado — depois disso ele começou a endurecer dentro do caminhão, e nenhum aditivo na obra conserta. Passou, volta.
+
+**O cone.** O abatimento medido é comparado com a faixa da peça. Fora da faixa, volta: concreto mais seco que o especificado não preenche a forma; mais fluido, segrega.
+
+**A carga devolvida não some.** Ela é registrada com número, nota fiscal e motivo. Não vira volume concretado e — na Etapa 3 — não vai poder ter corpo de prova moldado. Mas fica no histórico, porque é o documento que sustenta a discussão com a usina sobre quem paga o concreto recusado.
+
+**Cancelar tem limite.** Uma concretagem só se cancela enquanto nenhuma carga entrou na forma. Depois que o concreto foi lançado, a peça existe: o que se faz é concluir e controlar.
 
 ### Sobre os valores transcritos da norma
 
@@ -74,7 +94,7 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 ## Etapas
 
 1. **Base, obra e elementos estruturais** — concluída
-2. Concretagem e cargas: a regra do abatimento
+2. **Concretagem e cargas: a regra do abatimento** — concluída
 3. Corpos de prova e exemplares: idades e tolerâncias de rompimento
 4. Persistência em SQLite
 5. Resultados de ensaio
@@ -84,4 +104,4 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 
 ## Estado atual
 
-Etapa 1 concluída. O vocabulário do domínio está modelado: classes de resistência, abatimento com tolerância, tipos de elemento e a peça estrutural com sua especificação de projeto. Tudo coberto por testes que rodam com o PHP e mais nada.
+Etapa 2 concluída. A concretagem recebe caminhões e julga cada um na hora: tempo de transporte e abatimento contra a especificação da peça. Carga devolvida fica registrada com o motivo. Ainda sem banco — tudo em memória e coberto por testes.

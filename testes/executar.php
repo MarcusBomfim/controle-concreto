@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../src/autoload.php';
 require __DIR__ . '/Executor.php';
+require __DIR__ . '/ajuda.php';
 
 $pastas = ['dominio'];
 $arquivos = [];
