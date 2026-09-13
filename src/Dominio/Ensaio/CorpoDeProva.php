@@ -35,6 +35,19 @@ final class CorpoDeProva
         $this->idade = $idade;
     }
 
+    /** Recria um corpo de prova vindo do banco, na situação em que estava. */
+    public static function reconstituir(
+        string $identificacao,
+        DateTimeImmutable $moldadoEm,
+        IdadeDeEnsaio $idade,
+        SituacaoDoCorpoDeProva $situacao,
+    ): self {
+        $corpoDeProva = new self($identificacao, $moldadoEm, $idade);
+        $corpoDeProva->situacao = $situacao;
+
+        return $corpoDeProva;
+    }
+
     public function situacao(): SituacaoDoCorpoDeProva
     {
         return $this->situacao;

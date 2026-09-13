@@ -18,7 +18,19 @@ O sistema resolve isso amarrando cada corpo de prova ao caminhão que o originou
 php -v
 ```
 
-Não é preciso Composer nem banco de dados nesta etapa.
+A extensão `pdo_sqlite` já vem nas distribuições oficiais. Não é preciso Composer nem servidor de banco.
+
+## Como rodar
+
+```bash
+php ferramentas/migrar.php
+```
+
+```bash
+php ferramentas/semear.php
+```
+
+O banco é criado em `banco/controle-concreto.sqlite`, fora do controle de versão. A carga de demonstração é feita em PHP, pelo domínio, com datas relativas a hoje — para a agenda mostrar corpos de prova vencidos, na janela e futuros. Um SQL com datas fixas envelheceria em uma semana.
 
 ## Como rodar os testes
 
@@ -26,25 +38,37 @@ Não é preciso Composer nem banco de dados nesta etapa.
 php testes/executar.php
 ```
 
+Os testes de infraestrutura sobem um SQLite em memória e aplicam as migrations reais.
+
 ## Estrutura
 
 ```text
 controle-concreto/
+├── banco/
+│   └── migrations/         # SQL versionado, aplicado em ordem
+├── ferramentas/
+│   ├── migrar.php
+│   └── semear.php
 ├── src/
 │   ├── autoload.php
-│   └── Dominio/
-│       ├── Regras.php
-│       ├── ExcecaoDeDominio.php
-│       ├── Obra/           # Obra
-│       ├── Concreto/       # ClasseDeResistencia, Abatimento
-│       ├── Estrutura/      # ElementoEstrutural, TipoDeElemento
-│       ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao
-│       └── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio
+│   ├── Dominio/
+│   │   ├── Regras.php
+│   │   ├── ExcecaoDeDominio.php
+│   │   ├── Obra/           # Obra e o repositório
+│   │   ├── Concreto/       # ClasseDeResistencia, Abatimento
+│   │   ├── Estrutura/      # ElementoEstrutural, TipoDeElemento e o repositório
+│   │   ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao e o repositório
+│   │   └── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio
+│   ├── Aplicacao/          # AgendaDoLaboratorio, ItemDaAgenda
+│   └── Infraestrutura/
+│       ├── Banco/          # Conexao, Migrador
+│       └── Repositorio/    # implementações em SQLite
 ├── testes/
 │   ├── executar.php
 │   ├── Executor.php        # executor de testes mínimo, sem PHPUnit
 │   ├── ajuda.php           # fábricas compartilhadas entre os testes
-│   └── dominio/
+│   ├── dominio/
+│   └── infraestrutura/
 ├── composer.json
 └── README.md
 ```
@@ -109,6 +133,24 @@ Quando o caminhão chega, o canteiro faz duas coisas antes de descarregar: olha 
 
 **Cancelar tem limite.** Uma concretagem só se cancela enquanto nenhuma carga entrou na forma. Depois que o concreto foi lançado, a peça existe: o que se faz é concluir e controlar.
 
+## Banco de dados
+
+SQLite, pelos mesmos motivos de sempre: roda sem servidor, e o SQL é padrão o bastante para migrar depois. Chave estrangeira ligada em toda conexão (`PRAGMA foreign_keys = ON` — o SQLite a ignora por padrão), e as regras críticas repetidas em `CHECK`: o banco recusa `fck = 27` e `idade_dias = 14` tanto quanto o domínio.
+
+### A tabela mais consultada
+
+A pergunta que o laboratório faz todo dia de manhã é **"o que rompe hoje?"** — e ela precisa responder rápido mesmo com milhares de corpos de prova em cura. Por isso `corpos_de_prova` guarda `rompimento_previsto`, `inicio_janela` e `fim_janela` em colunas, com índice, em vez de calcular na consulta a partir de `moldado_em` e da idade.
+
+É desnormalização deliberada. O custo é manter os três coerentes com a moldagem — e como o corpo de prova é imutável depois de moldado, o custo é zero. Dois índices atendem as duas perguntas: `(situacao, rompimento_previsto)` para a agenda do dia e `(situacao, fim_janela)` para os vencidos.
+
+### A agenda não hidrata o agregado
+
+`AgendaDoLaboratorio` é uma interface de leitura. A implementação faz um `SELECT` com quatro `JOIN` e devolve `ItemDaAgenda` — um modelo de leitura com tudo que quem vai romper precisa: obra, peça, fck de projeto, carga, nota fiscal, janela. Não monta `Concretagem` nenhuma só para listar cilindros.
+
+### Cascata
+
+`concretagens → elementos` usa `ON DELETE CASCADE`. A regra desejável seria `RESTRICT` — não apague elemento já concretado — mas apagar a obra cascateia para elementos, e o `RESTRICT` bloquearia a exclusão da obra inteira. Proteger o elemento concretado é política de aplicação. Está comentado no SQL.
+
 ### Sobre os valores transcritos da norma
 
 Os limites de tolerância e de volume de lote foram transcritos das normas de memória e estão marcados no código com "confira com o texto vigente". Antes de qualquer uso real, cada número precisa ser conferido contra a edição atual da norma — elas são revisadas, e o sistema não substitui o texto normativo.
@@ -118,7 +160,7 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 1. **Base, obra e elementos estruturais** — concluída
 2. **Concretagem e cargas: a regra do abatimento** — concluída
 3. **Corpos de prova e exemplares: idades e tolerâncias de rompimento** — concluída
-4. Persistência em SQLite
+4. **Persistência em SQLite** — concluída
 5. Resultados de ensaio
 6. Lotes e fck estimado: a conta da NBR 12655
 7. Interface web: agenda do laboratório e resultados por peça
@@ -126,4 +168,4 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 
 ## Estado atual
 
-Etapa 3 concluída. Cada carga aceita molda exemplares por idade, cada exemplar tem dois corpos de prova, e cada corpo de prova sabe a janela de horário em que pode ir para a prensa. Carga devolvida não gera corpo de prova, e concretagem não conclui sem exemplar de 28 dias. Ainda tudo em memória.
+Etapa 4 concluída. Tudo persiste em SQLite com migrations versionadas: obra, elementos, concretagens com cargas, exemplares e corpos de prova. A agenda do laboratório já responde "o que rompe hoje" e "o que venceu" direto do índice. O `semear.php` monta uma obra de demonstração com datas relativas a hoje.

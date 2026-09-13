@@ -9,6 +9,13 @@ use ControleConcreto\Dominio\Concreto\ClasseDeResistencia;
 use ControleConcreto\Dominio\Ensaio\IdadeDeEnsaio;
 use ControleConcreto\Dominio\Estrutura\ElementoEstrutural;
 use ControleConcreto\Dominio\Estrutura\TipoDeElemento;
+use ControleConcreto\Dominio\Obra\Obra;
+use ControleConcreto\Infraestrutura\Banco\Conexao;
+use ControleConcreto\Infraestrutura\Banco\Migrador;
+use ControleConcreto\Infraestrutura\Repositorio\AgendaDoLaboratorioEmSqlite;
+use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeConcretagensEmSqlite;
+use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeElementosEmSqlite;
+use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeObrasEmSqlite;
 
 /*
  * Fábricas compartilhadas entre os arquivos de teste. Ficam aqui, carregadas
@@ -58,6 +65,12 @@ function concretagemDeTeste(): Concretagem
     );
 }
 
+/** Um instante qualquer, para os testes de janela. */
+function momento(string $dataHora): DateTimeImmutable
+{
+    return new DateTimeImmutable($dataHora);
+}
+
 /** Um horário no dia da concretagem de teste. */
 function hora(string $horario): DateTimeImmutable
 {
@@ -84,4 +97,49 @@ function moldaPadrao(Concretagem $concretagem, int $cargaNumero = 1): array
         hora('09:00'),
         [IdadeDeEnsaio::SeteDias, IdadeDeEnsaio::VinteEOitoDias],
     );
+}
+
+/** SQLite em memória com as migrations reais aplicadas. */
+function bancoDeTeste(): PDO
+{
+    $conexao = Conexao::emMemoria();
+    Migrador::padrao($conexao)->aplicar();
+
+    return $conexao;
+}
+
+function obraDeTeste(): Obra
+{
+    return new Obra('OBR-2026-007', 'Edifício Vista Serra', 'Construtora Vale Verde', 'Marcus Bomfim', 'CREA-SP 123456/D');
+}
+
+/**
+ * Banco com a obra e a laje de teste já gravadas, e os repositórios montados.
+ *
+ * @return array{
+ *     conexao: PDO,
+ *     obras: RepositorioDeObrasEmSqlite,
+ *     elementos: RepositorioDeElementosEmSqlite,
+ *     concretagens: RepositorioDeConcretagensEmSqlite,
+ *     agenda: AgendaDoLaboratorioEmSqlite
+ * }
+ */
+function ambienteComObra(): array
+{
+    $conexao = bancoDeTeste();
+
+    $obras = new RepositorioDeObrasEmSqlite($conexao);
+    $elementos = new RepositorioDeElementosEmSqlite($conexao);
+
+    $obras->salvar(obraDeTeste());
+    $elementos->salvar('OBR-2026-007', lajeDeTeste());
+    $elementos->salvar('OBR-2026-007', pilaresDeTeste());
+
+    return [
+        'conexao' => $conexao,
+        'obras' => $obras,
+        'elementos' => $elementos,
+        'concretagens' => new RepositorioDeConcretagensEmSqlite($conexao),
+        'agenda' => new AgendaDoLaboratorioEmSqlite($conexao),
+    ];
 }

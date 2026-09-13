@@ -8,11 +8,6 @@ use ControleConcreto\Dominio\Ensaio\IdadeDeEnsaio;
 use ControleConcreto\Dominio\Ensaio\SituacaoDoCorpoDeProva;
 use ControleConcreto\Dominio\ExcecaoDeDominio;
 
-function momento(string $dataHora): DateTimeImmutable
-{
-    return new DateTimeImmutable($dataHora);
-}
-
 grupo('Idade de ensaio');
 
 teste('a tolerância de rompimento cresce com a idade', function (): void {
