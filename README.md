@@ -38,7 +38,8 @@ controle-concreto/
 │       ├── Obra/           # Obra
 │       ├── Concreto/       # ClasseDeResistencia, Abatimento
 │       ├── Estrutura/      # ElementoEstrutural, TipoDeElemento
-│       └── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao
+│       ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao
+│       └── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio
 ├── testes/
 │   ├── executar.php
 │   ├── Executor.php        # executor de testes mínimo, sem PHPUnit
@@ -60,6 +61,9 @@ Quem não é da construção tropeça nos termos, então aqui vão os que o cód
 | **Elemento estrutural** | a peça concretada: laje, pilar, viga, sapata |
 | **Concretagem** | o evento de concretar uma peça num dia; recebe os caminhões |
 | **Carga** | um caminhão-betoneira, com sua nota fiscal, volume e abatimento medido |
+| **Corpo de prova** | cilindro de concreto moldado de uma carga, curado e rompido na prensa numa idade fixa |
+| **Exemplar** | dois corpos de prova da mesma carga, para a mesma idade; vale o maior dos dois |
+| **Idade** | quando o corpo de prova é rompido: 7 dias antecipa problema, 28 dias é o que vale |
 | **Lote** | o conjunto de concreto julgado de uma vez, limitado por volume e por tipo de peça |
 
 ## O que o domínio já garante
@@ -74,6 +78,24 @@ Quem não é da construção tropeça nos termos, então aqui vão os que o cód
 | Carga com mais de 150 min de transporte é devolvida | `Concretagem::receberCarga` | NBR 7212 |
 | Carga devolvida fica registrada e não conta como volume | `Concretagem::volumeAceitoEmM3` | — |
 | Concretagem só conclui com carga aceita; só cancela sem nenhuma | `Concretagem::concluir`, `cancelar` | — |
+| Carga devolvida não gera corpo de prova | `Concretagem::moldar` | — |
+| Corpo de prova é moldado no dia da concretagem, depois da chegada da carga | `Concretagem::moldar` | NBR 5738 |
+| Um exemplar por carga e idade; cada exemplar tem dois corpos de prova | `Exemplar::moldar` | NBR 5739 |
+| Cada idade tem janela de rompimento: 28 dias é ±20 h | `IdadeDeEnsaio::toleranciaEmHoras` | NBR 5739 |
+| Só 28 dias é idade de aceitação; 7 dias é informação | `IdadeDeEnsaio::ehDeAceitacao` | NBR 12655 |
+| Concretagem não conclui sem exemplar de 28 dias moldado | `Concretagem::concluir` | — |
+
+## O corpo de prova e o tempo
+
+Um corpo de prova só existe para ser rompido numa idade exata. O concreto ganha resistência com o tempo — aos 7 dias tem uns 70% do que terá aos 28 — então o resultado só significa alguma coisa se a idade for a certa.
+
+**A janela.** A NBR 5739 admite uma folga de horário por idade: 28 dias podem ser rompidos até 20 horas antes ou depois do instante exato; 7 dias, 6 horas; 24 horas, apenas meia hora. `CorpoDeProva` calcula o rompimento previsto e a janela, e responde três perguntas que a agenda do laboratório vai fazer: *ainda é cedo?*, *está na hora?*, *passou?*
+
+**Passou é o pior caso.** Corpo de prova vencido perdeu a idade nominal, e o ensaio dele não representa mais nada. É a situação que o sistema existe para evitar — e por isso a Etapa 7 vai mostrar uma agenda, não uma lista.
+
+**O exemplar.** A norma não olha corpo de prova isolado: olha o exemplar — dois cilindros da mesma carga, moldados no mesmo ato, para a mesma idade — e a resistência dele é a **maior** entre os dois. A lógica é que os dois vieram do mesmo concreto; se um deu menos, foi defeito de moldagem, cura ou ensaio, não do concreto. O menor é descartado como ruído.
+
+**Sem 28 dias não se conclui.** A regra de `concluir()` ficou mais rigorosa nesta etapa: além de carga aceita, exige exemplar de 28 dias moldado. Sem ele o lote nunca poderia ser aceito, e a peça ficaria sem controle para sempre. Melhor recusar enquanto ainda dá para moldar do que descobrir na hora do laudo.
 
 ## A concretagem
 
@@ -95,7 +117,7 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 
 1. **Base, obra e elementos estruturais** — concluída
 2. **Concretagem e cargas: a regra do abatimento** — concluída
-3. Corpos de prova e exemplares: idades e tolerâncias de rompimento
+3. **Corpos de prova e exemplares: idades e tolerâncias de rompimento** — concluída
 4. Persistência em SQLite
 5. Resultados de ensaio
 6. Lotes e fck estimado: a conta da NBR 12655
@@ -104,4 +126,4 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 
 ## Estado atual
 
-Etapa 2 concluída. A concretagem recebe caminhões e julga cada um na hora: tempo de transporte e abatimento contra a especificação da peça. Carga devolvida fica registrada com o motivo. Ainda sem banco — tudo em memória e coberto por testes.
+Etapa 3 concluída. Cada carga aceita molda exemplares por idade, cada exemplar tem dois corpos de prova, e cada corpo de prova sabe a janela de horário em que pode ir para a prensa. Carga devolvida não gera corpo de prova, e concretagem não conclui sem exemplar de 28 dias. Ainda tudo em memória.

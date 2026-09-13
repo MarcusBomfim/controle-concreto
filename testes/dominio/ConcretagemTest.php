@@ -6,36 +6,8 @@ use ControleConcreto\Dominio\Concretagem\Carga;
 use ControleConcreto\Dominio\Concretagem\Concretagem;
 use ControleConcreto\Dominio\Concretagem\MotivoDeDevolucao;
 use ControleConcreto\Dominio\Concretagem\SituacaoDaConcretagem;
+use ControleConcreto\Dominio\Ensaio\IdadeDeEnsaio;
 use ControleConcreto\Dominio\ExcecaoDeDominio;
-
-function concretagemDeTeste(): Concretagem
-{
-    return new Concretagem(
-        'obr-2026-007',
-        lajeDeTeste(),
-        new DateTimeImmutable('2026-03-10'),
-        'Concreteira Litoral',
-        'Marcus Bomfim',
-        new DateTimeImmutable('2026-03-10'),
-    );
-}
-
-function hora(string $horario): DateTimeImmutable
-{
-    return new DateTimeImmutable("2026-03-10 {$horario}");
-}
-
-/** Carga típica: saiu 8h, chegou 8h50, abatimento dentro da faixa de 100 ± 20. */
-function chegaCarga(
-    Concretagem $concretagem,
-    int $abatimento = 100,
-    string $saida = '08:00',
-    string $chegada = '08:50',
-    float $volume = 8.0,
-    string $notaFiscal = 'NF-1001',
-): Carga {
-    return $concretagem->receberCarga($notaFiscal, 'ABC-1D23', $volume, hora($saida), hora($chegada), $abatimento);
-}
 
 grupo('Concretagem: abertura');
 
@@ -180,13 +152,23 @@ teste('normaliza a placa e guarda a observação', function (): void {
 
 grupo('Concretagem: encerramento');
 
-teste('conclui com ao menos uma carga aceita', function (): void {
+teste('conclui com carga aceita e exemplar de 28 dias', function (): void {
     $concretagem = concretagemDeTeste();
     chegaCarga($concretagem, 100);
+    $concretagem->moldar(1, hora('09:00'), [IdadeDeEnsaio::VinteEOitoDias]);
 
     $concretagem->concluir();
 
     verdadeiro($concretagem->estaConcluida(), 'concluída');
+});
+
+teste('não conclui sem exemplar de 28 dias', function (): void {
+    // Carga aceita, mas só moldou 7 dias: o lote nunca poderia ser aceito.
+    $concretagem = concretagemDeTeste();
+    chegaCarga($concretagem, 100);
+    $concretagem->moldar(1, hora('09:00'), [IdadeDeEnsaio::SeteDias]);
+
+    lanca(ExcecaoDeDominio::class, static fn () => $concretagem->concluir(), 'Nenhum exemplar de 28 dias');
 });
 
 teste('não conclui sem carga aceita', function (): void {
@@ -199,6 +181,7 @@ teste('não conclui sem carga aceita', function (): void {
 teste('concluída não recebe mais carga', function (): void {
     $concretagem = concretagemDeTeste();
     chegaCarga($concretagem, 100);
+    $concretagem->moldar(1, hora('09:00'), [IdadeDeEnsaio::VinteEOitoDias]);
     $concretagem->concluir();
 
     lanca(ExcecaoDeDominio::class, static fn () => chegaCarga($concretagem, 100, notaFiscal: 'NF-2'), 'não recebe mais cargas');
@@ -223,6 +206,7 @@ teste('não cancela depois que o concreto foi lançado', function (): void {
 teste('não conclui duas vezes', function (): void {
     $concretagem = concretagemDeTeste();
     chegaCarga($concretagem, 100);
+    $concretagem->moldar(1, hora('09:00'), [IdadeDeEnsaio::VinteEOitoDias]);
     $concretagem->concluir();
 
     lanca(ExcecaoDeDominio::class, static fn () => $concretagem->concluir(), 'não é possível concluir');
