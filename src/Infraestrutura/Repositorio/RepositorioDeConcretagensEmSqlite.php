@@ -11,8 +11,10 @@ use ControleConcreto\Dominio\Concretagem\MotivoDeDevolucao;
 use ControleConcreto\Dominio\Concretagem\RepositorioDeConcretagens;
 use ControleConcreto\Dominio\Concretagem\SituacaoDaConcretagem;
 use ControleConcreto\Dominio\Ensaio\CorpoDeProva;
+use ControleConcreto\Dominio\Ensaio\DiametroDoCorpoDeProva;
 use ControleConcreto\Dominio\Ensaio\Exemplar;
 use ControleConcreto\Dominio\Ensaio\IdadeDeEnsaio;
+use ControleConcreto\Dominio\Ensaio\ResultadoDeEnsaio;
 use ControleConcreto\Dominio\Ensaio\SituacaoDoCorpoDeProva;
 use PDO;
 use Throwable;
@@ -162,11 +164,18 @@ final class RepositorioDeConcretagensEmSqlite implements RepositorioDeConcretage
         $corpoDeProva = $this->conexao->prepare(
             'INSERT INTO corpos_de_prova
                 (obra_codigo, concretagem_numero, carga_numero, idade_dias, letra, identificacao,
-                 moldado_em, rompimento_previsto, inicio_janela, fim_janela, situacao)
+                 moldado_em, rompimento_previsto, inicio_janela, fim_janela, situacao,
+                 rompido_em, carga_kn, diametro_mm, resistencia_mpa, motivo_descarte)
              VALUES (:obra_codigo, :concretagem_numero, :carga_numero, :idade_dias, :letra, :identificacao,
-                     :moldado_em, :rompimento_previsto, :inicio_janela, :fim_janela, :situacao)
+                     :moldado_em, :rompimento_previsto, :inicio_janela, :fim_janela, :situacao,
+                     :rompido_em, :carga_kn, :diametro_mm, :resistencia_mpa, :motivo_descarte)
              ON CONFLICT (obra_codigo, concretagem_numero, carga_numero, idade_dias, letra) DO UPDATE SET
-                situacao = excluded.situacao'
+                rompido_em      = excluded.rompido_em,
+                carga_kn        = excluded.carga_kn,
+                diametro_mm     = excluded.diametro_mm,
+                resistencia_mpa = excluded.resistencia_mpa,
+                motivo_descarte = excluded.motivo_descarte,
+                situacao        = excluded.situacao'
         );
 
         foreach ($concretagem->exemplares() as $ex) {
@@ -192,6 +201,11 @@ final class RepositorioDeConcretagensEmSqlite implements RepositorioDeConcretage
                     ':inicio_janela' => $cp->inicioDaJanela()->format(self::FORMATO),
                     ':fim_janela' => $cp->fimDaJanela()->format(self::FORMATO),
                     ':situacao' => $cp->situacao()->value,
+                    ':rompido_em' => $cp->resultado()?->rompidoEm->format(self::FORMATO),
+                    ':carga_kn' => $cp->resultado()?->cargaDeRupturaEmKN,
+                    ':diametro_mm' => $cp->resultado()?->diametro->value,
+                    ':resistencia_mpa' => $cp->resultado()?->resistenciaEmMPa(),
+                    ':motivo_descarte' => $cp->motivoDoDescarte(),
                 ]);
             }
         }
@@ -291,7 +305,8 @@ final class RepositorioDeConcretagensEmSqlite implements RepositorioDeConcretage
     {
         $linhas = $this->filhos(
             'SELECT e.concretagem_numero, e.carga_numero, e.idade_dias, e.moldado_em,
-                    cp.letra, cp.identificacao, cp.situacao
+                    cp.letra, cp.identificacao, cp.situacao,
+                    cp.rompido_em, cp.carga_kn, cp.diametro_mm, cp.motivo_descarte
              FROM exemplares e
              JOIN corpos_de_prova cp
                ON cp.obra_codigo = e.obra_codigo
@@ -315,6 +330,8 @@ final class RepositorioDeConcretagensEmSqlite implements RepositorioDeConcretage
                 new DateTimeImmutable((string) $l['moldado_em']),
                 IdadeDeEnsaio::from((int) $l['idade_dias']),
                 SituacaoDoCorpoDeProva::from((string) $l['situacao']),
+                self::montarResultado($l),
+                $l['motivo_descarte'] === null ? null : (string) $l['motivo_descarte'],
             );
         }
 
@@ -333,6 +350,25 @@ final class RepositorioDeConcretagensEmSqlite implements RepositorioDeConcretage
         }
 
         return $porConcretagem;
+    }
+
+    /**
+     * O resultado só existe quando as três colunas existem — o gatilho do
+     * banco garante que ou vêm todas, ou não vem nenhuma.
+     *
+     * @param array<string, mixed> $l
+     */
+    private static function montarResultado(array $l): ?ResultadoDeEnsaio
+    {
+        if ($l['rompido_em'] === null || $l['carga_kn'] === null || $l['diametro_mm'] === null) {
+            return null;
+        }
+
+        return new ResultadoDeEnsaio(
+            (float) $l['carga_kn'],
+            DiametroDoCorpoDeProva::from((int) $l['diametro_mm']),
+            new DateTimeImmutable((string) $l['rompido_em']),
+        );
     }
 
     /**

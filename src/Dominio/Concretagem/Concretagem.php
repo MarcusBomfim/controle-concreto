@@ -321,6 +321,20 @@ final class Concretagem
         return $todos;
     }
 
+    /** Localiza um corpo de prova pela identificação, para o laboratório lançar o resultado. */
+    public function corpoDeProva(string $identificacao): ?CorpoDeProva
+    {
+        $procurada = strtoupper(trim($identificacao));
+
+        foreach ($this->corposDeProva() as $corpoDeProva) {
+            if ($corpoDeProva->identificacao === $procurada) {
+                return $corpoDeProva;
+            }
+        }
+
+        return null;
+    }
+
     /** Só o que entrou na forma conta como volume concretado. */
     public function volumeAceitoEmM3(): float
     {

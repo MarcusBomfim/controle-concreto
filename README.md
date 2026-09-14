@@ -58,8 +58,8 @@ controle-concreto/
 │   │   ├── Concreto/       # ClasseDeResistencia, Abatimento
 │   │   ├── Estrutura/      # ElementoEstrutural, TipoDeElemento e o repositório
 │   │   ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao e o repositório
-│   │   └── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio
-│   ├── Aplicacao/          # AgendaDoLaboratorio, ItemDaAgenda
+│   │   └── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio, ResultadoDeEnsaio
+│   ├── Aplicacao/          # AgendaDoLaboratorio, RegistrarRompimento, DescartarCorpoDeProva
 │   └── Infraestrutura/
 │       ├── Banco/          # Conexao, Migrador
 │       └── Repositorio/    # implementações em SQLite
@@ -108,6 +108,24 @@ Quem não é da construção tropeça nos termos, então aqui vão os que o cód
 | Cada idade tem janela de rompimento: 28 dias é ±20 h | `IdadeDeEnsaio::toleranciaEmHoras` | NBR 5739 |
 | Só 28 dias é idade de aceitação; 7 dias é informação | `IdadeDeEnsaio::ehDeAceitacao` | NBR 12655 |
 | Concretagem não conclui sem exemplar de 28 dias moldado | `Concretagem::concluir` | — |
+| Resistência = força ÷ área, com uma casa decimal | `ResultadoDeEnsaio::resistenciaEmMPa` | NBR 5739 |
+| Só existem cilindros de 100 e 150 mm | `DiametroDoCorpoDeProva` | NBR 5738 |
+| Resultado fora da janela de idade é recusado | `CorpoDeProva::romper` | NBR 5739 |
+| Corpo de prova descartado exige motivo | `CorpoDeProva::descartar` | — |
+| Rompido e descartado são finais | gatilhos em `003_resultados_de_ensaio.sql` | — |
+| A resistência do exemplar é a maior dos dois corpos de prova | `Exemplar::resistenciaEmMPa` | NBR 5739 |
+
+## O resultado do ensaio
+
+A prensa entrega força, em kN. Resistência é força por área, em MPa — e 1 MPa é exatamente 1 N/mm², o que torna a conta direta: `kN × 1000 ÷ área em mm²`. `ResultadoDeEnsaio` existe para essa conta ser feita num lugar só. O diâmetro é enum porque errá-lo erra a resistência em 2,25 vezes.
+
+**Fora da janela, o número não entra.** Um cilindro de 28 dias rompido no 30º dia é mais forte do que era aos 28 — o valor existe, mas não representa a idade nominal. Não é dado; é ruído com cara de dado. `romper()` recusa, e a mensagem diz o que fazer: descartar e registrar o motivo. O corpo de prova descartado não some — fica com o motivo, e o exemplar dele segue com um cilindro só.
+
+**A resistência do exemplar é a maior.** Os dois cilindros vieram do mesmo concreto, moldados no mesmo ato; se um rompeu mais baixo, a causa está no cilindro — bolha, capeamento torto, prensa desalinhada — e não no concreto. `Exemplar::estaIncompleto()` marca quando só um dos dois sobreviveu: o resultado vale, mas com metade da redundância que a norma prevê.
+
+**A coerência vai em gatilho.** `ALTER TABLE` não aceita `CHECK` entre colunas, então três gatilhos garantem no banco o que o domínio garante no código: não existe "rompido" sem resultado, nem "descartado" sem motivo, e nenhum dos dois volta a "curando". É a mesma regra em dois lugares, para que nenhum caminho escape.
+
+**A resistência fica gravada.** É derivada de carga e diâmetro, mas a Etapa 6 vai varrer resistências aos milhares para a conta do lote — recalcular força/área linha a linha no SQL funciona no teste e arrasta em produção.
 
 ## O corpo de prova e o tempo
 
@@ -161,11 +179,11 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 2. **Concretagem e cargas: a regra do abatimento** — concluída
 3. **Corpos de prova e exemplares: idades e tolerâncias de rompimento** — concluída
 4. **Persistência em SQLite** — concluída
-5. Resultados de ensaio
+5. **Resultados de ensaio** — concluída
 6. Lotes e fck estimado: a conta da NBR 12655
 7. Interface web: agenda do laboratório e resultados por peça
 8. Não conformidade, acesso por papel e integração contínua
 
 ## Estado atual
 
-Etapa 4 concluída. Tudo persiste em SQLite com migrations versionadas: obra, elementos, concretagens com cargas, exemplares e corpos de prova. A agenda do laboratório já responde "o que rompe hoje" e "o que venceu" direto do índice. O `semear.php` monta uma obra de demonstração com datas relativas a hoje.
+Etapa 5 concluída. O laboratório lança o que a prensa mediu, o corpo de prova recusa resultado fora da janela de idade, o exemplar sabe sua resistência, e o banco garante por gatilho que rompido tem número e descartado tem motivo. O `semear.php` já grava quatro resultados históricos aos 7 dias.

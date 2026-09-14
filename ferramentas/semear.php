@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../src/autoload.php';
 
+use ControleConcreto\Aplicacao\RegistrarRompimento;
 use ControleConcreto\Dominio\Concretagem\Concretagem;
 use ControleConcreto\Dominio\Concreto\Abatimento;
 use ControleConcreto\Dominio\Concreto\ClasseDeResistencia;
@@ -112,13 +113,25 @@ function concretar(
     return $repositorio->salvar($concretagem);
 }
 
-// 27 dias atrás: os de 28 dias rompem amanhã; os de 7 já venceram — de propósito,
-// para a agenda mostrar o alerta.
-concretar($concretagens, $sapatas, 27, 'Concreteira Litoral', [
+// 27 dias atrás: os de 28 dias rompem amanhã. Dos de 7 dias, as cargas 1 e 2
+// foram rompidas no dia certo, com resultado histórico; a carga 3 ficou para
+// trás e venceu — de propósito, para a agenda mostrar o alerta.
+$numeroSapatas = concretar($concretagens, $sapatas, 27, 'Concreteira Litoral', [
     ['nf' => 'NF-48211', 'volume' => 8.0, 'saida' => '07:10', 'chegada' => '07:55', 'abatimento' => 80],
     ['nf' => 'NF-48212', 'volume' => 8.0, 'saida' => '07:40', 'chegada' => '08:30', 'abatimento' => 90],
     ['nf' => 'NF-48213', 'volume' => 2.0, 'saida' => '08:20', 'chegada' => '09:05', 'abatimento' => 75],
 ]);
+
+/*
+ * Resultados históricos aos 7 dias: sapatas C25 rendendo uns 70% do fck na
+ * primeira semana, que é o comportamento típico. A data de rompimento é
+ * 7 dias depois da moldagem, dentro da janela — o domínio confere isso.
+ */
+$registrar = new RegistrarRompimento($concretagens);
+
+foreach ([['C1-7d-A', 148.0], ['C1-7d-B', 141.5], ['C2-7d-A', 152.0], ['C2-7d-B', 155.5]] as [$cp, $cargaKN]) {
+    $registrar->executar(OBRA, $numeroSapatas, $cp, $cargaKN, 100, diasAtras(20, '09:40'));
+}
 
 // 5 dias atrás: os de 7 dias rompem em dois dias. Uma carga devolvida por abatimento.
 concretar($concretagens, $pilares, 5, 'Concreteira Litoral', [
@@ -137,7 +150,7 @@ concretar($concretagens, $laje, 0, 'Concreteira Litoral', [
 $totalCp = (int) $conexao->query('SELECT COUNT(*) FROM corpos_de_prova')->fetchColumn();
 
 printf(
-    'Banco carregado: 1 obra, 3 elementos, 3 concretagens e %d corpos de prova.%s',
+    'Banco carregado: 1 obra, 3 elementos, 3 concretagens, %d corpos de prova e 4 resultados.%s',
     $totalCp,
     PHP_EOL,
 );

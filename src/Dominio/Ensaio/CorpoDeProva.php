@@ -6,6 +6,7 @@ namespace ControleConcreto\Dominio\Ensaio;
 
 use DateInterval;
 use DateTimeImmutable;
+use ControleConcreto\Dominio\ExcecaoDeDominio;
 use ControleConcreto\Dominio\Regras;
 
 /**
@@ -24,6 +25,8 @@ final class CorpoDeProva
     public readonly IdadeDeEnsaio $idade;
 
     private SituacaoDoCorpoDeProva $situacao = SituacaoDoCorpoDeProva::Curando;
+    private ?ResultadoDeEnsaio $resultado = null;
+    private ?string $motivoDoDescarte = null;
 
     public function __construct(
         string $identificacao,
@@ -41,9 +44,13 @@ final class CorpoDeProva
         DateTimeImmutable $moldadoEm,
         IdadeDeEnsaio $idade,
         SituacaoDoCorpoDeProva $situacao,
+        ?ResultadoDeEnsaio $resultado = null,
+        ?string $motivoDoDescarte = null,
     ): self {
         $corpoDeProva = new self($identificacao, $moldadoEm, $idade);
         $corpoDeProva->situacao = $situacao;
+        $corpoDeProva->resultado = $resultado;
+        $corpoDeProva->motivoDoDescarte = $motivoDoDescarte;
 
         return $corpoDeProva;
     }
@@ -51,6 +58,85 @@ final class CorpoDeProva
     public function situacao(): SituacaoDoCorpoDeProva
     {
         return $this->situacao;
+    }
+
+    /**
+     * Registra o rompimento na prensa.
+     *
+     * A regra com mais consequência do módulo: o resultado só entra se o
+     * rompimento aconteceu dentro da janela da idade. Um cilindro de 28 dias
+     * rompido no 30º dia é mais forte do que era aos 28 — o número existe,
+     * mas não representa a idade nominal. Não é dado; é ruído com cara de
+     * dado. Quem rompeu fora da hora descarta e anota o motivo.
+     */
+    public function romper(ResultadoDeEnsaio $resultado, ?DateTimeImmutable $agora = null): void
+    {
+        if (!$this->situacao->aguardaRompimento()) {
+            throw new ExcecaoDeDominio(sprintf(
+                'O corpo de prova %s já está %s.',
+                $this->identificacao,
+                mb_strtolower($this->situacao->rotulo()),
+            ));
+        }
+
+        $limite = $agora ?? new DateTimeImmutable('now');
+
+        if ($resultado->rompidoEm > $limite) {
+            throw new ExcecaoDeDominio('A hora do rompimento ainda não chegou. Confira o relógio.');
+        }
+
+        if (!$this->dentroDaJanela($resultado->rompidoEm)) {
+            throw new ExcecaoDeDominio(sprintf(
+                'O corpo de prova %s foi rompido às %s, fora da janela de %s. '
+                . 'O resultado não representa a idade de %s: descarte-o e registre o motivo.',
+                $this->identificacao,
+                $resultado->rompidoEm->format('d/m H:i'),
+                $this->descricaoDaJanela(),
+                $this->idade->rotulo(),
+            ));
+        }
+
+        $this->resultado = $resultado;
+        $this->situacao = SituacaoDoCorpoDeProva::Rompido;
+    }
+
+    /**
+     * Tira o corpo de prova do controle sem resultado: quebrou na desforma,
+     * foi perdido, ou passou da janela. O motivo é obrigatório — um cilindro
+     * que some sem explicação é o que auditoria procura.
+     */
+    public function descartar(string $motivo): void
+    {
+        if (!$this->situacao->aguardaRompimento()) {
+            throw new ExcecaoDeDominio(sprintf(
+                'O corpo de prova %s já está %s e não pode ser descartado.',
+                $this->identificacao,
+                mb_strtolower($this->situacao->rotulo()),
+            ));
+        }
+
+        $this->motivoDoDescarte = Regras::textoObrigatorio($motivo, 'Motivo do descarte', 300);
+        $this->situacao = SituacaoDoCorpoDeProva::Descartado;
+    }
+
+    public function resultado(): ?ResultadoDeEnsaio
+    {
+        return $this->resultado;
+    }
+
+    public function resistenciaEmMPa(): ?float
+    {
+        return $this->resultado?->resistenciaEmMPa();
+    }
+
+    public function motivoDoDescarte(): ?string
+    {
+        return $this->motivoDoDescarte;
+    }
+
+    public function foiRompido(): bool
+    {
+        return $this->situacao === SituacaoDoCorpoDeProva::Rompido;
     }
 
     /** O instante exato em que o corpo de prova completa a idade. */

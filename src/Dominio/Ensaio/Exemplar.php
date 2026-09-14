@@ -100,10 +100,51 @@ final class Exemplar
         return $this->primeiro->estaVencido($agora) || $this->segundo->estaVencido($agora);
     }
 
-    /** Os dois ainda esperam a prensa. */
+    /** Ao menos um dos dois ainda espera a prensa. */
     public function aguardaRompimento(): bool
     {
         return $this->primeiro->situacao()->aguardaRompimento()
             || $this->segundo->situacao()->aguardaRompimento();
+    }
+
+    /**
+     * A resistência do exemplar: a MAIOR entre os dois corpos de prova.
+     *
+     * É a regra da NBR 5739. Os dois vieram do mesmo concreto, moldados no
+     * mesmo ato; se um rompeu mais baixo, a causa está no cilindro — bolha,
+     * capeamento torto, prensa desalinhada — e não no concreto. O maior é o
+     * que melhor representa o material. O menor é descartado como ruído.
+     *
+     * Devolve nulo enquanto nenhum dos dois foi rompido.
+     */
+    public function resistenciaEmMPa(): ?float
+    {
+        $valores = array_values(array_filter(
+            [$this->primeiro->resistenciaEmMPa(), $this->segundo->resistenciaEmMPa()],
+            static fn (?float $valor): bool => $valor !== null,
+        ));
+
+        return $valores === [] ? null : max($valores);
+    }
+
+    /** Tem ao menos um resultado válido para entrar na conta do lote. */
+    public function temResultado(): bool
+    {
+        return $this->resistenciaEmMPa() !== null;
+    }
+
+    /** Os dois foram rompidos: o exemplar está como a norma pede. */
+    public function estaCompleto(): bool
+    {
+        return $this->primeiro->foiRompido() && $this->segundo->foiRompido();
+    }
+
+    /**
+     * Um dos dois se perdeu e o outro rompeu. O resultado vale, mas fica
+     * anotado: o exemplar ficou com metade da redundância que a norma prevê.
+     */
+    public function estaIncompleto(): bool
+    {
+        return $this->temResultado() && !$this->estaCompleto() && !$this->aguardaRompimento();
     }
 }
