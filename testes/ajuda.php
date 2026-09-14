@@ -2,19 +2,28 @@
 
 declare(strict_types=1);
 
+use ControleConcreto\Aplicacao\FormarLote;
+use ControleConcreto\Aplicacao\JulgarLote;
 use ControleConcreto\Dominio\Concretagem\Carga;
 use ControleConcreto\Dominio\Concretagem\Concretagem;
 use ControleConcreto\Dominio\Concreto\Abatimento;
 use ControleConcreto\Dominio\Concreto\ClasseDeResistencia;
+use ControleConcreto\Dominio\Ensaio\DiametroDoCorpoDeProva;
 use ControleConcreto\Dominio\Ensaio\IdadeDeEnsaio;
+use ControleConcreto\Dominio\Ensaio\ResultadoDeEnsaio;
 use ControleConcreto\Dominio\Estrutura\ElementoEstrutural;
+use ControleConcreto\Dominio\Estrutura\GrupoDeSolicitacao;
 use ControleConcreto\Dominio\Estrutura\TipoDeElemento;
+use ControleConcreto\Dominio\Lote\CondicaoDePreparo;
+use ControleConcreto\Dominio\Lote\Lote;
+use ControleConcreto\Dominio\Lote\TipoDeAmostragem;
 use ControleConcreto\Dominio\Obra\Obra;
 use ControleConcreto\Infraestrutura\Banco\Conexao;
 use ControleConcreto\Infraestrutura\Banco\Migrador;
 use ControleConcreto\Infraestrutura\Repositorio\AgendaDoLaboratorioEmSqlite;
 use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeConcretagensEmSqlite;
 use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeElementosEmSqlite;
+use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeLotesEmSqlite;
 use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeObrasEmSqlite;
 
 /*
@@ -135,11 +144,77 @@ function ambienteComObra(): array
     $elementos->salvar('OBR-2026-007', lajeDeTeste());
     $elementos->salvar('OBR-2026-007', pilaresDeTeste());
 
+    $concretagens = new RepositorioDeConcretagensEmSqlite($conexao);
+    $lotes = new RepositorioDeLotesEmSqlite($conexao, $concretagens);
+
     return [
         'conexao' => $conexao,
         'obras' => $obras,
         'elementos' => $elementos,
-        'concretagens' => new RepositorioDeConcretagensEmSqlite($conexao),
+        'concretagens' => $concretagens,
         'agenda' => new AgendaDoLaboratorioEmSqlite($conexao),
+        'lotes' => $lotes,
+        'formarLote' => new FormarLote($conexao, $concretagens, $lotes),
+        'julgarLote' => new JulgarLote($lotes),
     ];
+}
+
+/**
+ * Concretagem concluída e numerada, com uma carga de 8 m³ por resistência
+ * pedida, cada carga com exemplar de 28 dias rompido nos dois corpos de prova
+ * no valor dado. Nulo deixa o exemplar aguardando.
+ *
+ * @param array<int, ?float> $resistenciasEmMPa
+ */
+function concretagemComResultados(
+    int $numero,
+    array $resistenciasEmMPa,
+    ?ElementoEstrutural $elemento = null,
+    string $data = '2026-03-10',
+): Concretagem {
+    $concretagem = new Concretagem(
+        'OBR-2026-007',
+        $elemento ?? lajeDeTeste(),
+        new DateTimeImmutable($data),
+        'Usina',
+        'Marcus',
+        new DateTimeImmutable($data),
+    );
+    if ($numero > 0) {
+        $concretagem->definirNumero($numero);
+    }
+
+    foreach ($resistenciasEmMPa as $indice => $mpa) {
+        $carga = $concretagem->receberCarga(
+            "NF-{$numero}-{$indice}",
+            null,
+            8.0,
+            new DateTimeImmutable("{$data} 08:00"),
+            new DateTimeImmutable("{$data} 08:40"),
+            $elemento?->abatimento->especificadoEmMm ?? 100,
+        );
+
+        [$exemplar] = $concretagem->moldar($carga->numero, new DateTimeImmutable("{$data} 09:00"), [IdadeDeEnsaio::VinteEOitoDias]);
+
+        if ($mpa === null) {
+            continue;
+        }
+
+        // kN que dá exatamente esse MPa num cilindro de 10 cm.
+        $kN = $mpa * DiametroDoCorpoDeProva::DezCentimetros->areaEmMm2() / 1000;
+        $rompidoEm = (new DateTimeImmutable("{$data} 09:00"))->modify('+28 days');
+
+        foreach ($exemplar->corposDeProva() as $cp) {
+            $cp->romper(new ResultadoDeEnsaio($kN, DiametroDoCorpoDeProva::DezCentimetros, $rompidoEm), $rompidoEm);
+        }
+    }
+
+    $concretagem->concluir();
+
+    return $concretagem;
+}
+
+function loteC30(TipoDeAmostragem $amostragem = TipoDeAmostragem::Parcial): Lote
+{
+    return new Lote('OBR-2026-007', ClasseDeResistencia::C30, GrupoDeSolicitacao::Horizontal, CondicaoDePreparo::A, $amostragem);
 }

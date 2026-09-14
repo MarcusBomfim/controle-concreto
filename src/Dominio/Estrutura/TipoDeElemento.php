@@ -36,19 +36,19 @@ enum TipoDeElemento: string
         };
     }
 
-    /**
-     * Volume máximo do lote de aceitação em m³, conforme a NBR 12655.
-     *
-     * A norma distingue elementos "verticais" de "horizontais" pelo risco:
-     * pilar e parede carregam tudo o que está acima. Valores transcritos da
-     * tabela da norma; confira com o texto vigente antes de uso real.
-     */
-    public function volumeMaximoDoLoteEmM3(): int
+    /** Pilar e parede trabalham comprimidos; o resto, fletido. */
+    public function grupo(): GrupoDeSolicitacao
     {
         return match ($this) {
-            self::Pilar, self::Parede => 50,
-            default => 100,
+            self::Pilar, self::Parede => GrupoDeSolicitacao::Vertical,
+            default => GrupoDeSolicitacao::Horizontal,
         };
+    }
+
+    /** Volume máximo do lote de aceitação em m³ — vem do grupo. */
+    public function volumeMaximoDoLoteEmM3(): int
+    {
+        return $this->grupo()->volumeMaximoDoLoteEmM3();
     }
 
     /** Piso e "outro" podem ser concreto simples; o resto é estrutural. */

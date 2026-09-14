@@ -58,8 +58,9 @@ controle-concreto/
 │   │   ├── Concreto/       # ClasseDeResistencia, Abatimento
 │   │   ├── Estrutura/      # ElementoEstrutural, TipoDeElemento e o repositório
 │   │   ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao e o repositório
-│   │   └── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio, ResultadoDeEnsaio
-│   ├── Aplicacao/          # AgendaDoLaboratorio, RegistrarRompimento, DescartarCorpoDeProva
+│   │   ├── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio, ResultadoDeEnsaio
+│   │   └── Lote/           # Lote, CalculadoraDeFckEstimado, Psi6, EstimativaDeFck
+│   ├── Aplicacao/          # casos de uso e a agenda do laboratório
 │   └── Infraestrutura/
 │       ├── Banco/          # Conexao, Migrador
 │       └── Repositorio/    # implementações em SQLite
@@ -114,6 +115,45 @@ Quem não é da construção tropeça nos termos, então aqui vão os que o cód
 | Corpo de prova descartado exige motivo | `CorpoDeProva::descartar` | — |
 | Rompido e descartado são finais | gatilhos em `003_resultados_de_ensaio.sql` | — |
 | A resistência do exemplar é a maior dos dois corpos de prova | `Exemplar::resistenciaEmMPa` | NBR 5739 |
+| Lote tem um fck e um grupo de solicitação só | `Lote::adicionarConcretagem` | NBR 12655 |
+| Lote de no máximo 50 m³ (vertical) ou 100 m³ (horizontal), em até 3 dias | `Lote::adicionarConcretagem` | NBR 12655 |
+| Uma concretagem entra em um lote só | chave primária de `lote_concretagens` | — |
+| Lote só é julgado com todos os exemplares de 28 dias resolvidos | `Lote::julgar` | — |
+| Amostragem parcial exige ao menos 6 exemplares | `CalculadoraDeFckEstimado` | NBR 12655 |
+| fck,est pela fórmula da norma, com piso ψ6 × f1 | `CalculadoraDeFckEstimado` | NBR 12655 |
+| Lote julgado não muda mais | `Lote::exigirAberto` e `CHECK` em `lotes` | — |
+
+## O lote e a conta da norma
+
+É o coração do sistema, e a parte em que mais preciso ser explícito sobre o que sei e o que não sei.
+
+### Como o lote se forma
+
+A NBR 12655 não julga concretagem: julga **lote** — o conjunto de concreto que se supõe homogêneo. Um lote tem um fck só, um grupo de solicitação só (peças comprimidas como pilar e parede não se misturam com peças fletidas como laje e viga), volume limitado (50 m³ para o grupo vertical, 100 m³ para o horizontal) e no máximo três dias de concretagem. Uma concretagem pequena não se julga sozinha; junta-se a outras até formar amostra.
+
+A regra que foi para o banco: **uma concretagem entra em um lote só**. A chave primária de `lote_concretagens` é `(obra, concretagem)`, e não `(obra, lote, concretagem)`. Duas pessoas formando lotes ao mesmo tempo com a mesma concretagem passariam por qualquer verificação em PHP; a chave primária não deixa a segunda gravar.
+
+### A conta
+
+Com os exemplares de 28 dias ordenados da menor resistência para a maior (f1 ≤ f2 ≤ … ≤ fn), `CalculadoraDeFckEstimado` faz o que entendo ser o item 6.2.3 da norma:
+
+| Amostragem | n | fck,est |
+| --- | --- | --- |
+| Total | n ≤ 20 | f1 — o menor exemplar |
+| Total | n > 20 | f(i), com i = ⌈0,05 n⌉ |
+| Parcial | n < 6 | amostra insuficiente; não julga |
+| Parcial | 6 ≤ n < 20 | máx( 2·(f1 + … + f(m−1))/(m−1) − f(m) , ψ6 × f1 ), com m = ⌊n/2⌋ |
+| Parcial | n ≥ 20 | f(i), com i = ⌈0,05 n⌉ |
+
+O ψ6 vem de uma tabela por n e por condição de preparo (A para usina; B ou C para concreto dosado na obra). Para n intermediário usa-se o valor do maior n tabulado abaixo — o lado conservador.
+
+O lote é **aceito** se fck,est ≥ fck de projeto; senão, **não conforme**. E a memória de cálculo — valores ordenados, fórmula, ψ6, piso, qual prevaleceu — vai para o banco em JSON junto com o veredito. Quando um lote é reprovado, a primeira coisa que o engenheiro faz é conferir a conta.
+
+### O que precisa ser conferido
+
+**As fórmulas, os limiares e a tabela de ψ6 foram transcritos de memória.** Estão marcados no código com o aviso, e os testes de `FckEstimadoTest` foram calculados à mão a partir das fórmulas *como transcritas* — eles provam que a implementação faz o que a transcrição diz, não que a transcrição está certa.
+
+Antes de qualquer uso real, cada linha da tabela acima e cada valor de `Psi6::TABELA` precisa ser conferido contra o texto vigente da NBR 12655. É a conta que aprova ou reprova uma laje. Se algum número estiver errado, o lugar de corrigir é um só, e os testes mudam junto.
 
 ## O resultado do ensaio
 
@@ -180,10 +220,10 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 3. **Corpos de prova e exemplares: idades e tolerâncias de rompimento** — concluída
 4. **Persistência em SQLite** — concluída
 5. **Resultados de ensaio** — concluída
-6. Lotes e fck estimado: a conta da NBR 12655
+6. **Lotes e fck estimado: a conta da NBR 12655** — concluída
 7. Interface web: agenda do laboratório e resultados por peça
 8. Não conformidade, acesso por papel e integração contínua
 
 ## Estado atual
 
-Etapa 5 concluída. O laboratório lança o que a prensa mediu, o corpo de prova recusa resultado fora da janela de idade, o exemplar sabe sua resistência, e o banco garante por gatilho que rompido tem número e descartado tem motivo. O `semear.php` já grava quatro resultados históricos aos 7 dias.
+Etapa 6 concluída. O ciclo da norma fecha: concretagens se juntam em lotes dentro dos limites da NBR 12655, o lote é julgado quando todos os exemplares de 28 dias estão resolvidos, e a conta do fck estimado — com a memória de cálculo — decide se o concreto passou. Fórmulas e tabela marcadas para conferência contra o texto vigente.
