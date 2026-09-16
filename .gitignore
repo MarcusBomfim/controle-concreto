@@ -3,6 +3,7 @@ composer.lock
 
 # Banco local do SQLite
 *.sqlite
+*.sqlite-*
 *.sqlite3
 *.db
 

@@ -14,7 +14,7 @@ require __DIR__ . '/../src/autoload.php';
 require __DIR__ . '/Executor.php';
 require __DIR__ . '/ajuda.php';
 
-$pastas = ['dominio', 'infraestrutura'];
+$pastas = ['dominio', 'infraestrutura', 'aplicacao', 'web'];
 $arquivos = [];
 
 foreach ($pastas as $pasta) {

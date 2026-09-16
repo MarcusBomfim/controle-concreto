@@ -32,13 +32,19 @@ php ferramentas/semear.php
 
 O banco é criado em `banco/controle-concreto.sqlite`, fora do controle de versão. A carga de demonstração é feita em PHP, pelo domínio, com datas relativas a hoje — para a agenda mostrar corpos de prova vencidos, na janela e futuros. Um SQL com datas fixas envelheceria em uma semana.
 
+```bash
+php -S localhost:8000 -t public public/index.php
+```
+
+Abra <http://localhost:8000>. A primeira tela é a agenda do laboratório. Não há login nesta etapa — o acesso por papel entra na Etapa 8.
+
 ## Como rodar os testes
 
 ```bash
 php testes/executar.php
 ```
 
-Os testes de infraestrutura sobem um SQLite em memória e aplicam as migrations reais.
+Os testes de infraestrutura e de aplicação sobem um SQLite em memória e aplicam as migrations reais. Os testes web cobrem o roteador, a requisição e a resposta; os controladores não têm teste automatizado porque dependem da sessão do PHP.
 
 ## Estrutura
 
@@ -61,15 +67,24 @@ controle-concreto/
 │   │   ├── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio, ResultadoDeEnsaio
 │   │   └── Lote/           # Lote, CalculadoraDeFckEstimado, Psi6, EstimativaDeFck
 │   ├── Aplicacao/          # casos de uso e a agenda do laboratório
-│   └── Infraestrutura/
-│       ├── Banco/          # Conexao, Migrador
-│       └── Repositorio/    # implementações em SQLite
+│   ├── Infraestrutura/
+│   │   ├── Banco/          # Conexao, Migrador
+│   │   └── Repositorio/    # implementações em SQLite
+│   ├── Web/                # Roteador, Requisicao, Resposta, Sessao, Visao
+│   │   └── Controlador/    # um controlador por tela: laboratório, obras, concretagens, lotes
+│   └── ajudantes.php       # e(), caminho(), mpa()… — funções globais dos templates
+├── public/
+│   ├── index.php           # ponto de entrada: monta as dependências e as rotas
+│   └── estilo.css
+├── visoes/                 # templates PHP: layout, agenda, obras/, concretagens/, lotes/
 ├── testes/
 │   ├── executar.php
 │   ├── Executor.php        # executor de testes mínimo, sem PHPUnit
 │   ├── ajuda.php           # fábricas compartilhadas entre os testes
 │   ├── dominio/
-│   └── infraestrutura/
+│   ├── infraestrutura/
+│   ├── aplicacao/
+│   └── web/
 ├── composer.json
 └── README.md
 ```
@@ -173,7 +188,7 @@ Um corpo de prova só existe para ser rompido numa idade exata. O concreto ganha
 
 **A janela.** A NBR 5739 admite uma folga de horário por idade: 28 dias podem ser rompidos até 20 horas antes ou depois do instante exato; 7 dias, 6 horas; 24 horas, apenas meia hora. `CorpoDeProva` calcula o rompimento previsto e a janela, e responde três perguntas que a agenda do laboratório vai fazer: *ainda é cedo?*, *está na hora?*, *passou?*
 
-**Passou é o pior caso.** Corpo de prova vencido perdeu a idade nominal, e o ensaio dele não representa mais nada. É a situação que o sistema existe para evitar — e por isso a Etapa 7 vai mostrar uma agenda, não uma lista.
+**Passou é o pior caso.** Corpo de prova vencido perdeu a idade nominal, e o ensaio dele não representa mais nada. É a situação que o sistema existe para evitar — e por isso a tela principal é uma agenda, não uma lista.
 
 **O exemplar.** A norma não olha corpo de prova isolado: olha o exemplar — dois cilindros da mesma carga, moldados no mesmo ato, para a mesma idade — e a resistência dele é a **maior** entre os dois. A lógica é que os dois vieram do mesmo concreto; se um deu menos, foi defeito de moldagem, cura ou ensaio, não do concreto. O menor é descartado como ruído.
 
@@ -190,6 +205,20 @@ Quando o caminhão chega, o canteiro faz duas coisas antes de descarregar: olha 
 **A carga devolvida não some.** Ela é registrada com número, nota fiscal e motivo. Não vira volume concretado e — na Etapa 3 — não vai poder ter corpo de prova moldado. Mas fica no histórico, porque é o documento que sustenta a discussão com a usina sobre quem paga o concreto recusado.
 
 **Cancelar tem limite.** Uma concretagem só se cancela enquanto nenhuma carga entrou na forma. Depois que o concreto foi lançado, a peça existe: o que se faz é concluir e controlar.
+
+## A interface web
+
+**A agenda é a tela principal.** Não é a lista de obras: é o que o laboratório abre de manhã. Três blocos, em ordem de urgência — o que venceu, o que está na janela agora, o que abre nos próximos sete dias. "Na janela" é calculado contra o relógio, não contra o dia: um corpo de prova de 28 dias moldado às 8h de um dia 1 pode ser rompido a partir das 12h do dia 28, e é nesse momento que ele aparece.
+
+**O resultado se lança na própria linha.** Força em kN, diâmetro, data e hora — e o cilindro some da agenda. Quem está na prensa não vai até a obra procurar a concretagem; o caminho da planilha era esse, e é o que se quer evitar. O mesmo formulário aparece na tela da concretagem, para quem chega pela peça.
+
+**O vencido só descarta.** A agenda não oferece o campo de resultado para corpo de prova fora da janela, e o domínio recusaria de qualquer jeito. O que ela oferece é o descarte com motivo já sugerido.
+
+**Toda alteração é POST com token.** Cada formulário leva o token da sessão, o controlador confere com `hash_equals`, e depois do POST vem um redirecionamento 303 — atualizar a página não reenvia o formulário. GET nunca altera nada.
+
+**A classe e o grupo do lote não são digitados.** Saem da primeira concretagem marcada; se as outras não combinarem, o domínio recusa com a mensagem que explica por quê. Pedir para escolher "C30" numa lista abriria espaço para o engano que a regra existe para impedir.
+
+**O controlador não tem regra.** Lê o formulário, chama o caso de uso, guarda a mensagem, redireciona. Toda mensagem de erro que a tela mostra foi escrita no domínio, para quem está no canteiro ou na prensa — o controlador só a repassa. A única exceção é o erro inesperado, que vira uma frase genérica em vez de um stack trace.
 
 ## Banco de dados
 
@@ -221,9 +250,9 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 4. **Persistência em SQLite** — concluída
 5. **Resultados de ensaio** — concluída
 6. **Lotes e fck estimado: a conta da NBR 12655** — concluída
-7. Interface web: agenda do laboratório e resultados por peça
+7. **Interface web: agenda do laboratório, concretagem, lote com memória de cálculo** — concluída
 8. Não conformidade, acesso por papel e integração contínua
 
 ## Estado atual
 
-Etapa 6 concluída. O ciclo da norma fecha: concretagens se juntam em lotes dentro dos limites da NBR 12655, o lote é julgado quando todos os exemplares de 28 dias estão resolvidos, e a conta do fck estimado — com a memória de cálculo — decide se o concreto passou. Fórmulas e tabela marcadas para conferência contra o texto vigente.
+Etapa 7 concluída. O sistema é usável de ponta a ponta pelo navegador: cadastro de obra e peças, concretagem com recebimento de caminhão e moldagem, agenda do laboratório com lançamento de resultado na linha, formação e julgamento do lote com a memória de cálculo aberta. Falta a Etapa 8: o que acontece com o lote não conforme, quem pode fazer o quê, e a integração contínua. Fórmulas e tabela continuam marcadas para conferência contra o texto vigente.

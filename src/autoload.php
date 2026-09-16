@@ -24,3 +24,6 @@ spl_autoload_register(static function (string $classe): void {
         require $caminho;
     }
 });
+
+// Funções globais dos templates. Não são classes, então o autoload não as acha.
+require __DIR__ . DIRECTORY_SEPARATOR . 'ajudantes.php';
