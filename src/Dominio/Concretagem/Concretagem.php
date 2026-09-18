@@ -321,13 +321,17 @@ final class Concretagem
         return $todos;
     }
 
-    /** Localiza um corpo de prova pela identificação, para o laboratório lançar o resultado. */
+    /**
+     * Localiza um corpo de prova pela identificação, para o laboratório lançar
+     * o resultado. Sem diferenciar caixa: a etiqueta é "C1-28d-A", com o "d"
+     * de dias minúsculo, e quem digita na prensa não vai lembrar disso.
+     */
     public function corpoDeProva(string $identificacao): ?CorpoDeProva
     {
         $procurada = strtoupper(trim($identificacao));
 
         foreach ($this->corposDeProva() as $corpoDeProva) {
-            if ($corpoDeProva->identificacao === $procurada) {
+            if (strtoupper($corpoDeProva->identificacao) === $procurada) {
                 return $corpoDeProva;
             }
         }
