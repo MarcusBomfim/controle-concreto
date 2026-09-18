@@ -3,9 +3,11 @@
         <h1 class="titulo">Obras</h1>
         <p class="cabecalho__nota">Cada obra tem suas peças, suas concretagens e seus lotes de aceitação.</p>
     </div>
-    <div class="cabecalho__acoes">
-        <a class="botao botao--primario" href="/obras/nova">Nova obra</a>
-    </div>
+    <?php if ($usuarioAtual?->papel->podeDecidir() ?? false): ?>
+        <div class="cabecalho__acoes">
+            <a class="botao botao--primario" href="/obras/nova">Nova obra</a>
+        </div>
+    <?php endif ?>
 </header>
 
 <?php if ($linhas === []): ?>

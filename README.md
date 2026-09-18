@@ -36,7 +36,21 @@ O banco é criado em `banco/controle-concreto.sqlite`, fora do controle de vers�
 php -S localhost:8000 -t public public/index.php
 ```
 
-Abra <http://localhost:8000>. A primeira tela é a agenda do laboratório. Não há login nesta etapa — o acesso por papel entra na Etapa 8.
+Abra <http://localhost:8000>. A primeira tela é o login; depois dele, a agenda do laboratório.
+
+### Contas de demonstração
+
+Criadas por `php ferramentas/semear.php` e destinadas apenas a desenvolvimento:
+
+| E-mail | Senha | Papel | Pode |
+| --- | --- | --- | --- |
+| engenheiro@concreto.dev | `Engenheiro@123` | Engenheiro | tudo: cadastros, concretagens, laboratório, lotes e não conformidades |
+| laboratorio@concreto.dev | `Laboratorio@123` | Laboratorista | concretagens, cargas, moldagens, rompimentos e descartes |
+| gestor@concreto.dev | `Gestor@123` | Gestor | somente leitura |
+
+As senhas não estão em arquivo nenhum: o `semear.php` gera o hash com `password_hash()` na hora, com sal aleatório. Conta que já existe não é sobrescrita.
+
+A carga de demonstração tem datas relativas a hoje: corpos de prova vencidos, corpos de prova na janela de rompimento neste momento, outros para os próximos dias, uma concretagem em andamento e um lote reprovado com a não conformidade aberta. Para recarregar do zero, apague `banco/controle-concreto.sqlite` e rode `migrar.php` e `semear.php` de novo.
 
 ## Como rodar os testes
 
@@ -44,7 +58,7 @@ Abra <http://localhost:8000>. A primeira tela é a agenda do laboratório. Não 
 php testes/executar.php
 ```
 
-Os testes de infraestrutura e de aplicação sobem um SQLite em memória e aplicam as migrations reais. Os testes web cobrem o roteador, a requisição e a resposta; os controladores não têm teste automatizado porque dependem da sessão do PHP.
+Os testes de infraestrutura e de aplicação sobem um SQLite em memória e aplicam as migrations reais. Os testes em `testes/web/FluxoTest.php` atravessam a aplicação inteira sem servidor — login, o dia de concretagem pelos formulários, o resultado lançado da agenda, o lote julgado, a não conformidade tratada e encerrada, o 403 do gestor — usando a mesma `Montagem` que o `public/index.php`, com uma `Sessao` em memória no lugar da sessão do PHP. Qualquer aviso emitido por um template vira falha.
 
 ## Estrutura
 
@@ -65,18 +79,21 @@ controle-concreto/
 │   │   ├── Estrutura/      # ElementoEstrutural, TipoDeElemento e o repositório
 │   │   ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao e o repositório
 │   │   ├── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio, ResultadoDeEnsaio
-│   │   └── Lote/           # Lote, CalculadoraDeFckEstimado, Psi6, EstimativaDeFck
+│   │   ├── Lote/           # Lote, CalculadoraDeFckEstimado, Psi6, EstimativaDeFck
+│   │   ├── NaoConformidade/ # NaoConformidade, Providencia, Desfecho
+│   │   └── Usuario/        # Usuario, Papel
 │   ├── Aplicacao/          # casos de uso e a agenda do laboratório
 │   ├── Infraestrutura/
 │   │   ├── Banco/          # Conexao, Migrador
 │   │   └── Repositorio/    # implementações em SQLite
-│   ├── Web/                # Roteador, Requisicao, Resposta, Sessao, Visao
-│   │   └── Controlador/    # um controlador por tela: laboratório, obras, concretagens, lotes
+│   ├── Web/                # Roteador, Requisicao, Resposta, Sessao, Visao, Guarda, Montagem
+│   │   └── Controlador/    # um por tela: acesso, laboratório, obras, concretagens, lotes, não conformidades
 │   └── ajudantes.php       # e(), caminho(), mpa()… — funções globais dos templates
 ├── public/
 │   ├── index.php           # ponto de entrada: monta as dependências e as rotas
 │   └── estilo.css
-├── visoes/                 # templates PHP: layout, agenda, obras/, concretagens/, lotes/
+├── visoes/                 # templates PHP: layout, agenda, acesso/, obras/, concretagens/, lotes/, nao-conformidades/
+├── .github/workflows/ci.yml  # sintaxe, testes e aplicação no ar, em PHP 8.1 e 8.4
 ├── testes/
 │   ├── executar.php
 │   ├── Executor.php        # executor de testes mínimo, sem PHPUnit
@@ -180,7 +197,7 @@ A prensa entrega força, em kN. Resistência é força por área, em MPa — e 1
 
 **A coerência vai em gatilho.** `ALTER TABLE` não aceita `CHECK` entre colunas, então três gatilhos garantem no banco o que o domínio garante no código: não existe "rompido" sem resultado, nem "descartado" sem motivo, e nenhum dos dois volta a "curando". É a mesma regra em dois lugares, para que nenhum caminho escape.
 
-**A resistência fica gravada.** É derivada de carga e diâmetro, mas a Etapa 6 vai varrer resistências aos milhares para a conta do lote — recalcular força/área linha a linha no SQL funciona no teste e arrasta em produção.
+**A resistência fica gravada.** É derivada de carga e diâmetro, mas a conta do lote varre resistências aos milhares — recalcular força/área linha a linha no SQL funciona no teste e arrasta em produção.
 
 ## O corpo de prova e o tempo
 
@@ -202,7 +219,7 @@ Quando o caminhão chega, o canteiro faz duas coisas antes de descarregar: olha 
 
 **O cone.** O abatimento medido é comparado com a faixa da peça. Fora da faixa, volta: concreto mais seco que o especificado não preenche a forma; mais fluido, segrega.
 
-**A carga devolvida não some.** Ela é registrada com número, nota fiscal e motivo. Não vira volume concretado e — na Etapa 3 — não vai poder ter corpo de prova moldado. Mas fica no histórico, porque é o documento que sustenta a discussão com a usina sobre quem paga o concreto recusado.
+**A carga devolvida não some.** Ela é registrada com número, nota fiscal e motivo. Não vira volume concretado e não pode ter corpo de prova moldado. Mas fica no histórico, porque é o documento que sustenta a discussão com a usina sobre quem paga o concreto recusado.
 
 **Cancelar tem limite.** Uma concretagem só se cancela enquanto nenhuma carga entrou na forma. Depois que o concreto foi lançado, a peça existe: o que se faz é concluir e controlar.
 
@@ -219,6 +236,30 @@ Quando o caminhão chega, o canteiro faz duas coisas antes de descarregar: olha 
 **A classe e o grupo do lote não são digitados.** Saem da primeira concretagem marcada; se as outras não combinarem, o domínio recusa com a mensagem que explica por quê. Pedir para escolher "C30" numa lista abriria espaço para o engano que a regra existe para impedir.
 
 **O controlador não tem regra.** Lê o formulário, chama o caso de uso, guarda a mensagem, redireciona. Toda mensagem de erro que a tela mostra foi escrita no domínio, para quem está no canteiro ou na prensa — o controlador só a repassa. A única exceção é o erro inesperado, que vira uma frase genérica em vez de um stack trace.
+
+## Quando o concreto não passa
+
+**A não conformidade nasce com o veredito.** `JulgarLote` grava o lote e, se o fck estimado ficou abaixo do fck de projeto, abre a não conformidade na mesma transação. Não existe lote reprovado sem tratamento aberto — é a regra que impede o resultado ruim de ser esquecido numa tabela.
+
+**As providências seguem a ordem da norma**, do mais barato ao mais caro: revisão do projeto com o fck obtido; ensaio não destrutivo para localizar a região fraca; extração de testemunhos (NBR 7680) para medir a resistência real; prova de carga para comprovar; e só no fim reforço ou demolição. Cada providência é imutável — tem data, descrição de ao menos 20 caracteres, responsável e resultado. O ensaio não destrutivo é sempre informativo: ele localiza, não decide. Só a extração de testemunhos informa um fck obtido, e é obrigada a informar.
+
+**O desfecho precisa de prova.** Encerrar como "estrutura aceita" exige revisão de projeto, testemunho ou prova de carga com resultado favorável; "reforçada" exige o reforço executado; "demolida", a demolição. A entidade calcula quais desfechos as providências registradas já sustentam, e a tela só oferece esses. Aceitar no grito não tem caminho.
+
+A sequência foi transcrita de memória da NBR 12655 e da seção de não conformidades da NBR 6118. Como tudo o que é norma neste projeto: confira com o texto vigente.
+
+## Acesso e papéis
+
+Três papéis, que espelham quem circula no controle tecnológico:
+
+| Papel | Opera (carga, moldagem, rompimento, descarte) | Decide (cadastros, lote, julgamento, não conformidade) |
+| --- | --- | --- |
+| Engenheiro | sim | sim |
+| Laboratorista | sim | não |
+| Gestor | não | não — só consulta |
+
+As permissões moram no enum `Papel` — `podeOperar()`, `podeDecidir()` — e a `Montagem` só diz qual rota exige qual. Nenhum controlador tem `if ($papel === ...)`. A interface esconde os botões que o papel não pode usar, mas isso é cortesia: quem enviar o POST direto recebe 403, porque a `Guarda` confere no servidor, a cada requisição, lendo o usuário no banco.
+
+Senha só como hash bcrypt (`password_hash`), login com uma mensagem única para e-mail e senha errados, hash de isca para conta inexistente custar o mesmo tempo, sessão regenerada no login, token anti-CSRF em todo formulário e redirecionamento só para caminho local. O que não há: limite de tentativas de login e recuperação de senha — próximos passos se o sistema for para produção.
 
 ## Banco de dados
 
@@ -251,8 +292,10 @@ Os limites de tolerância e de volume de lote foram transcritos das normas de me
 5. **Resultados de ensaio** — concluída
 6. **Lotes e fck estimado: a conta da NBR 12655** — concluída
 7. **Interface web: agenda do laboratório, concretagem, lote com memória de cálculo** — concluída
-8. Não conformidade, acesso por papel e integração contínua
+8. **Não conformidade, acesso por papel e integração contínua** — concluída
 
 ## Estado atual
 
-Etapa 7 concluída. O sistema é usável de ponta a ponta pelo navegador: cadastro de obra e peças, concretagem com recebimento de caminhão e moldagem, agenda do laboratório com lançamento de resultado na linha, formação e julgamento do lote com a memória de cálculo aberta. Falta a Etapa 8: o que acontece com o lote não conforme, quem pode fazer o quê, e a integração contínua. Fórmulas e tabela continuam marcadas para conferência contra o texto vigente.
+As oito etapas estão concluídas. O ciclo inteiro do controle tecnológico está coberto: a peça é cadastrada com a especificação do projeto; cada caminhão é julgado na chegada pelo relógio e pelo cone; os corpos de prova entram na agenda com a janela de rompimento da norma; o resultado é lançado da própria agenda e recusado fora da janela; as concretagens se juntam em lotes dentro dos limites da NBR 12655; o lote é julgado com a memória de cálculo aberta; e o lote reprovado abre uma não conformidade que só se encerra com providência favorável. Três papéis, testes de fluxo que atravessam a aplicação inteira e integração contínua em PHP 8.1 e 8.4.
+
+O que continua verdade desde a primeira etapa: as fórmulas, tolerâncias, limites de lote e a tabela de ψ6 foram transcritos de memória e estão marcados no código. Antes de qualquer uso real, cada número precisa ser conferido contra a edição vigente das normas.

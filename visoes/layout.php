@@ -12,11 +12,22 @@
             <span class="topo__sigla">CC</span>
             <span>Controle de Concreto</span>
         </a>
-        <nav class="topo__menu">
-            <a href="/">Agenda do laboratório</a>
-            <a href="/obras">Obras</a>
-        </nav>
-        <p class="topo__legenda">Recebimento, corpos de prova e aceitação pela NBR 12655</p>
+        <?php if (($usuarioAtual ?? null) !== null): ?>
+            <nav class="topo__menu">
+                <a href="/">Agenda do laboratório</a>
+                <a href="/obras">Obras</a>
+            </nav>
+            <div class="topo__usuario">
+                <span class="topo__nome"><?= e($usuarioAtual->nome) ?></span>
+                <span class="etiqueta"><?= e($usuarioAtual->papel->rotulo()) ?></span>
+                <form method="post" action="/sair">
+                    <input type="hidden" name="token" value="<?= e($token ?? '') ?>">
+                    <button type="submit" class="botao botao--discreto">Sair</button>
+                </form>
+            </div>
+        <?php else: ?>
+            <p class="topo__legenda">Recebimento, corpos de prova e aceitação pela NBR 12655</p>
+        <?php endif ?>
     </header>
 
     <main class="pagina">

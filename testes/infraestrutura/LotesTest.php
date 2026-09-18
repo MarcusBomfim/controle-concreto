@@ -9,21 +9,6 @@ use ControleConcreto\Dominio\Lote\CondicaoDePreparo;
 use ControleConcreto\Dominio\Lote\SituacaoDoLote;
 use ControleConcreto\Dominio\Lote\TipoDeAmostragem;
 
-/** Grava duas concretagens C30 concluídas com seis exemplares no total (fck,est = 29,2). */
-function ambienteComConcretagensJulgaveis(): array
-{
-    $app = ambienteComObra();
-
-    $primeira = concretagemComResultados(0, [32.4, 29.8, 31.1]);
-    $segunda = concretagemComResultados(0, [33.6, 30.5, 35.0], data: '2026-03-11');
-
-    // O helper numera com 0 para o repositório atribuir; corrige antes de gravar.
-    $app['n1'] = $app['concretagens']->salvar($primeira);
-    $app['n2'] = $app['concretagens']->salvar($segunda);
-
-    return $app;
-}
-
 grupo('Formar lote');
 
 teste('forma, grava e lê de volta com as concretagens', function (): void {

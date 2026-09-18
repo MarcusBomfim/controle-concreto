@@ -13,6 +13,7 @@ use ControleConcreto\Dominio\Estrutura\RepositorioDeElementos;
 use ControleConcreto\Dominio\Estrutura\TipoDeElemento;
 use ControleConcreto\Dominio\ExcecaoDeDominio;
 use ControleConcreto\Dominio\Lote\RepositorioDeLotes;
+use ControleConcreto\Dominio\NaoConformidade\RepositorioDeNaoConformidades;
 use ControleConcreto\Dominio\Obra\Obra;
 use ControleConcreto\Dominio\Obra\RepositorioDeObras;
 use ControleConcreto\Web\Requisicao;
@@ -32,6 +33,7 @@ final class ControladorDeObras
         private readonly RepositorioDeElementos $elementos,
         private readonly RepositorioDeConcretagens $concretagens,
         private readonly RepositorioDeLotes $lotes,
+        private readonly RepositorioDeNaoConformidades $naoConformidades,
         private readonly Visao $visao,
         private readonly Sessao $sessao,
     ) {
@@ -133,6 +135,7 @@ final class ControladorDeObras
             'concretagens' => $concretagens,
             'lotePorConcretagem' => $lotePorConcretagem,
             'lotes' => $this->lotes->daObra($obra->codigo),
+            'naoConformidades' => $this->naoConformidades->daObra($obra->codigo),
             'mensagem' => $this->sessao->tirarMensagem(),
             'erro' => $this->sessao->tirarErro(),
         ], $obra->nome));

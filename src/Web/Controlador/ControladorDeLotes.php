@@ -12,6 +12,7 @@ use ControleConcreto\Dominio\ExcecaoDeDominio;
 use ControleConcreto\Dominio\Lote\CondicaoDePreparo;
 use ControleConcreto\Dominio\Lote\RepositorioDeLotes;
 use ControleConcreto\Dominio\Lote\TipoDeAmostragem;
+use ControleConcreto\Dominio\NaoConformidade\RepositorioDeNaoConformidades;
 use ControleConcreto\Dominio\Obra\RepositorioDeObras;
 use ControleConcreto\Web\Requisicao;
 use ControleConcreto\Web\Resposta;
@@ -33,6 +34,7 @@ final class ControladorDeLotes
         private readonly RepositorioDeObras $obras,
         private readonly RepositorioDeConcretagens $concretagens,
         private readonly RepositorioDeLotes $lotes,
+        private readonly RepositorioDeNaoConformidades $naoConformidades,
         private readonly FormarLote $formar,
         private readonly JulgarLote $julgar,
         private readonly Visao $visao,
@@ -138,6 +140,7 @@ final class ControladorDeLotes
         return Resposta::html($this->visao->renderizar('lotes.detalhe', [
             'obra' => $obra,
             'lote' => $lote,
+            'naoConformidade' => $this->naoConformidades->doLote($obra->codigo, $lote->numero()),
             'mensagem' => $this->sessao->tirarMensagem(),
             'erro' => $this->sessao->tirarErro(),
         ], sprintf('Lote nº %d — %s', $lote->numero(), $obra->nome)));
@@ -160,11 +163,12 @@ final class ControladorDeLotes
             $estimativa = $lote->estimativa();
 
             $this->sessao->guardarMensagem(sprintf(
-                'Lote nº %d julgado: fck,est = %s MPa contra fck = %s MPa. %s.',
+                'Lote nº %d julgado: fck,est = %s MPa contra fck = %s MPa. %s.%s',
                 $lote->numero(),
                 number_format($estimativa?->fckEstimadoEmMPa ?? 0.0, 1, ',', '.'),
                 number_format($lote->classe->fck(), 1, ',', '.'),
                 $lote->situacao()->rotulo(),
+                $lote->foiAceito() ? '' : ' A não conformidade foi aberta: registre as providências.',
             ));
         } catch (ExcecaoDeDominio $erro) {
             $this->sessao->guardarErro($erro->getMessage());

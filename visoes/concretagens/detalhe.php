@@ -1,6 +1,7 @@
 <?php
 $elemento = $concretagem->elemento;
 $emAndamento = $concretagem->situacao()->aceitaCarga();
+$podeOperar = $usuarioAtual?->papel->podeOperar() ?? false;
 $ehHoje = $concretagem->data->format('Y-m-d') === $agora->format('Y-m-d');
 $aqui = caminho('obras', $obra->codigo, 'concretagens', $concretagem->numero());
 
@@ -39,7 +40,7 @@ foreach ($concretagem->corposDeProva() as $cp) {
             <a class="botao" href="<?= e(caminho('obras', $obra->codigo, 'lotes', $loteNumero)) ?>">Lote <?= e($loteNumero) ?></a>
         <?php endif ?>
 
-        <?php if ($emAndamento && $concretagem->cargasAceitas() !== []): ?>
+        <?php if ($podeOperar && $emAndamento && $concretagem->cargasAceitas() !== []): ?>
             <form method="post" action="<?= e($aqui) ?>/concluir"
                   onsubmit="return confirm('Concluir a concretagem nº <?= e($concretagem->numero()) ?>? Depois disso ela não recebe mais cargas nem moldagens.');">
                 <input type="hidden" name="token" value="<?= e($token) ?>">
@@ -47,7 +48,7 @@ foreach ($concretagem->corposDeProva() as $cp) {
             </form>
         <?php endif ?>
 
-        <?php if ($emAndamento && $concretagem->cargasAceitas() === []): ?>
+        <?php if ($podeOperar && $emAndamento && $concretagem->cargasAceitas() === []): ?>
             <form method="post" action="<?= e($aqui) ?>/cancelar"
                   onsubmit="return confirm('Cancelar a concretagem nº <?= e($concretagem->numero()) ?>?');">
                 <input type="hidden" name="token" value="<?= e($token) ?>">
@@ -128,7 +129,7 @@ foreach ($concretagem->corposDeProva() as $cp) {
     </div>
 <?php endif ?>
 
-<?php if ($emAndamento): ?>
+<?php if ($podeOperar && $emAndamento): ?>
     <form class="formulario" method="post" action="<?= e($aqui) ?>/cargas">
         <input type="hidden" name="token" value="<?= e($token) ?>">
 
@@ -288,7 +289,7 @@ foreach ($concretagem->corposDeProva() as $cp) {
                                 <?php endif ?>
                             </td>
                             <td>
-                                <?php if ($curando): ?>
+                                <?php if ($curando && $podeOperar): ?>
                                     <?php
                                     $base = $aqui . '/corpos-de-prova/' . rawurlencode($cp->identificacao);
                                     $voltar = $aqui;

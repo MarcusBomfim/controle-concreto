@@ -11,10 +11,20 @@
         </p>
     </div>
 
+    <?php
+    $podeOperar = $usuarioAtual?->papel->podeOperar() ?? false;
+    $podeDecidir = $usuarioAtual?->papel->podeDecidir() ?? false;
+    ?>
     <div class="cabecalho__acoes">
-        <a class="botao" href="<?= e(caminho('obras', $obra->codigo, 'elementos', 'novo')) ?>">Novo elemento</a>
-        <a class="botao botao--primario" href="<?= e(caminho('obras', $obra->codigo, 'concretagens', 'nova')) ?>">Nova concretagem</a>
-        <a class="botao" href="<?= e(caminho('obras', $obra->codigo, 'lotes', 'novo')) ?>">Formar lote</a>
+        <?php if ($podeDecidir): ?>
+            <a class="botao" href="<?= e(caminho('obras', $obra->codigo, 'elementos', 'novo')) ?>">Novo elemento</a>
+        <?php endif ?>
+        <?php if ($podeOperar): ?>
+            <a class="botao botao--primario" href="<?= e(caminho('obras', $obra->codigo, 'concretagens', 'nova')) ?>">Nova concretagem</a>
+        <?php endif ?>
+        <?php if ($podeDecidir): ?>
+            <a class="botao" href="<?= e(caminho('obras', $obra->codigo, 'lotes', 'novo')) ?>">Formar lote</a>
+        <?php endif ?>
     </div>
 </header>
 
@@ -107,6 +117,46 @@
                                 <a href="<?= e(caminho('obras', $obra->codigo, 'lotes', $numeroDoLote)) ?>">Lote <?= e($numeroDoLote) ?></a>
                             <?php else: ?>
                                 <span class="codigo">—</span>
+                            <?php endif ?>
+                        </td>
+                    </tr>
+                <?php endforeach ?>
+            </tbody>
+        </table>
+    </div>
+<?php endif ?>
+
+<?php if ($naoConformidades !== []): ?>
+    <h2 class="subtitulo subtitulo--alerta">Não conformidades</h2>
+    <div class="rolagem">
+        <table class="tabela">
+            <thead>
+                <tr>
+                    <th>Lote</th>
+                    <th>Aberta em</th>
+                    <th class="numerico">fck estimado</th>
+                    <th class="numerico">fck de projeto</th>
+                    <th class="numerico">Providências</th>
+                    <th>Situação</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($naoConformidades as $naoConformidade): ?>
+                    <tr class="<?= $naoConformidade->estaAberta() ? 'linha--vencida' : '' ?>">
+                        <td>
+                            <a href="<?= e(caminho('obras', $obra->codigo, 'lotes', $naoConformidade->loteNumero, 'nao-conformidade')) ?>">
+                                Lote <?= e($naoConformidade->loteNumero) ?>
+                            </a>
+                        </td>
+                        <td><?= e(dataBr($naoConformidade->abertaEm)) ?></td>
+                        <td class="numerico"><?= e(mpa($naoConformidade->fckEstimadoEmMPa)) ?></td>
+                        <td class="numerico"><?= e(mpa($naoConformidade->fckDeProjetoEmMPa)) ?></td>
+                        <td class="numerico"><?= e(count($naoConformidade->providencias())) ?></td>
+                        <td>
+                            <?php if ($naoConformidade->estaAberta()): ?>
+                                <span class="etiqueta etiqueta--nao_conforme">Aberta</span>
+                            <?php else: ?>
+                                <span class="etiqueta etiqueta--aceito"><?= e($naoConformidade->desfecho()?->rotulo()) ?></span>
                             <?php endif ?>
                         </td>
                     </tr>

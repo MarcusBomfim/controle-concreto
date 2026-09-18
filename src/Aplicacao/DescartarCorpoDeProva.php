@@ -13,7 +13,7 @@ use ControleConcreto\Dominio\ExcecaoDeDominio;
  *
  * É o caminho para o cilindro que quebrou na desforma, que foi perdido, ou
  * que passou da janela sem ser rompido. Ele não some: fica como descartado,
- * com o motivo, e o exemplar dele segue com um cilindro só — o que a Etapa 6
+ * com o motivo, e o exemplar dele segue com um cilindro só — o que o lote
  * vai levar em conta.
  */
 final class DescartarCorpoDeProva

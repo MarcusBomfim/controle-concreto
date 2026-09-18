@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ControleConcreto\Web;
 
+use ControleConcreto\Dominio\Usuario\Usuario;
 use RuntimeException;
 
 /**
@@ -12,12 +13,11 @@ use RuntimeException;
  * As variáveis chegam ao template por extract, e a função e() fica disponível
  * lá dentro. Escapar é obrigação de quem escreve o template — e o nome curto
  * existe justamente para não haver desculpa de esquecer.
- *
- * Reaproveitada do gestao-obras. O usuário logado entra na Etapa 8.
  */
 final class Visao
 {
     private string $tokenDaSessao = '';
+    private ?Usuario $usuarioAtual = null;
 
     public function __construct(private readonly string $diretorio)
     {
@@ -34,10 +34,17 @@ final class Visao
         $this->tokenDaSessao = $token;
     }
 
+    /** Quem está logado chega a todo template como $usuarioAtual — os botões dependem do papel. */
+    public function definirUsuario(?Usuario $usuario): void
+    {
+        $this->usuarioAtual = $usuario;
+    }
+
     /** @param array<string, mixed> $dados */
     public function renderizar(string $template, array $dados = [], string $titulo = ''): string
     {
         $dados['token'] = $this->tokenDaSessao;
+        $dados['usuarioAtual'] = $this->usuarioAtual;
 
         $conteudo = $this->capturar($template, $dados);
 
@@ -45,6 +52,7 @@ final class Visao
             'conteudo' => $conteudo,
             'titulo' => $titulo,
             'token' => $this->tokenDaSessao,
+            'usuarioAtual' => $this->usuarioAtual,
             'mensagem' => $dados['mensagem'] ?? null,
             'erro' => $dados['erro'] ?? null,
         ]);

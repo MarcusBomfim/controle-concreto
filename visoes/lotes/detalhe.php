@@ -30,7 +30,14 @@ $perdidos = $lote->exemplaresPerdidos();
             <span class="codigo">julgado em <?= e(dataHoraBr($lote->julgadoEm())) ?></span>
         <?php endif ?>
 
-        <?php if ($lote->podeSerJulgado()): ?>
+        <?php if ($naoConformidade !== null): ?>
+            <a class="botao <?= $naoConformidade->estaAberta() ? 'botao--perigo' : '' ?>"
+               href="<?= e(caminho('obras', $obra->codigo, 'lotes', $lote->numero(), 'nao-conformidade')) ?>">
+                Não conformidade: <?= e($naoConformidade->estaAberta() ? 'aberta' : mb_strtolower($naoConformidade->desfecho()?->rotulo() ?? '')) ?>
+            </a>
+        <?php endif ?>
+
+        <?php if ($lote->podeSerJulgado() && ($usuarioAtual?->papel->podeDecidir() ?? false)): ?>
             <form method="post" action="<?= e(caminho('obras', $obra->codigo, 'lotes', $lote->numero(), 'julgar')) ?>"
                   onsubmit="return confirm('Julgar o lote nº <?= e($lote->numero()) ?>? A conta da norma é feita com os exemplares atuais e o veredito fica registrado.');">
                 <input type="hidden" name="token" value="<?= e($token) ?>">

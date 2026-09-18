@@ -1,3 +1,4 @@
+<?php $podeOperar = $usuarioAtual?->papel->podeOperar() ?? false; ?>
 <header class="cabecalho">
     <div>
         <h1 class="titulo">Agenda do laboratório</h1>
@@ -65,13 +66,15 @@
                         <td><?= e($item->idade->rotulo()) ?></td>
                         <td class="atraso"><?= e(dataHoraBr($item->fimDaJanela)) ?></td>
                         <td>
-                            <?php
-                            $base = caminho('obras', $item->obraCodigo, 'concretagens', $item->concretagemNumero, 'corpos-de-prova', $item->identificacao);
-                            $voltar = '/';
-                            $podeRomper = false;
-                            $motivo = 'Passou da janela de rompimento sem ser rompido';
-                            require __DIR__ . '/partes/acoes-do-corpo-de-prova.php';
-                            ?>
+                            <?php if ($podeOperar): ?>
+                                <?php
+                                $base = caminho('obras', $item->obraCodigo, 'concretagens', $item->concretagemNumero, 'corpos-de-prova', $item->identificacao);
+                                $voltar = '/';
+                                $podeRomper = false;
+                                $motivo = 'Passou da janela de rompimento sem ser rompido';
+                                require __DIR__ . '/partes/acoes-do-corpo-de-prova.php';
+                                ?>
+                            <?php endif ?>
                         </td>
                     </tr>
                 <?php endforeach ?>
@@ -120,13 +123,17 @@
                             <span class="codigo">previsto <?= e(dataHoraBr($item->rompimentoPrevisto)) ?></span>
                         </td>
                         <td>
-                            <?php
-                            $base = caminho('obras', $item->obraCodigo, 'concretagens', $item->concretagemNumero, 'corpos-de-prova', $item->identificacao);
-                            $voltar = '/';
-                            $podeRomper = true;
-                            $motivo = '';
-                            require __DIR__ . '/partes/acoes-do-corpo-de-prova.php';
-                            ?>
+                            <?php if ($podeOperar): ?>
+                                <?php
+                                $base = caminho('obras', $item->obraCodigo, 'concretagens', $item->concretagemNumero, 'corpos-de-prova', $item->identificacao);
+                                $voltar = '/';
+                                $podeRomper = true;
+                                $motivo = '';
+                                require __DIR__ . '/partes/acoes-do-corpo-de-prova.php';
+                                ?>
+                            <?php else: ?>
+                                <span class="codigo">registro pelo laboratório</span>
+                            <?php endif ?>
                         </td>
                     </tr>
                 <?php endforeach ?>

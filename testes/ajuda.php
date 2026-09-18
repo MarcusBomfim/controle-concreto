@@ -24,6 +24,7 @@ use ControleConcreto\Infraestrutura\Repositorio\AgendaDoLaboratorioEmSqlite;
 use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeConcretagensEmSqlite;
 use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeElementosEmSqlite;
 use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeLotesEmSqlite;
+use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeNaoConformidadesEmSqlite;
 use ControleConcreto\Infraestrutura\Repositorio\RepositorioDeObrasEmSqlite;
 
 /*
@@ -146,6 +147,7 @@ function ambienteComObra(): array
 
     $concretagens = new RepositorioDeConcretagensEmSqlite($conexao);
     $lotes = new RepositorioDeLotesEmSqlite($conexao, $concretagens);
+    $naoConformidades = new RepositorioDeNaoConformidadesEmSqlite($conexao);
 
     return [
         'conexao' => $conexao,
@@ -154,8 +156,9 @@ function ambienteComObra(): array
         'concretagens' => $concretagens,
         'agenda' => new AgendaDoLaboratorioEmSqlite($conexao),
         'lotes' => $lotes,
+        'naoConformidades' => $naoConformidades,
         'formarLote' => new FormarLote($conexao, $concretagens, $lotes),
-        'julgarLote' => new JulgarLote($lotes),
+        'julgarLote' => new JulgarLote($conexao, $lotes, $naoConformidades),
     ];
 }
 
@@ -217,4 +220,19 @@ function concretagemComResultados(
 function loteC30(TipoDeAmostragem $amostragem = TipoDeAmostragem::Parcial): Lote
 {
     return new Lote('OBR-2026-007', ClasseDeResistencia::C30, GrupoDeSolicitacao::Horizontal, CondicaoDePreparo::A, $amostragem);
+}
+
+/** Grava duas concretagens C30 concluídas com seis exemplares no total (fck,est = 29,2). */
+function ambienteComConcretagensJulgaveis(): array
+{
+    $app = ambienteComObra();
+
+    $primeira = concretagemComResultados(0, [32.4, 29.8, 31.1]);
+    $segunda = concretagemComResultados(0, [33.6, 30.5, 35.0], data: '2026-03-11');
+
+    // O helper numera com 0 para o repositório atribuir; corrige antes de gravar.
+    $app['n1'] = $app['concretagens']->salvar($primeira);
+    $app['n2'] = $app['concretagens']->salvar($segunda);
+
+    return $app;
 }

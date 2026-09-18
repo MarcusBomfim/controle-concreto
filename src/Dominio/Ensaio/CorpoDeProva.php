@@ -15,7 +15,7 @@ use ControleConcreto\Dominio\Regras;
  *
  * Nesta etapa o corpo de prova sabe de tempo: quando foi moldado, com que
  * idade deve romper, e a janela de horário em que o rompimento vale. O
- * resultado do ensaio entra na Etapa 5 — aqui a pergunta é "quando", não
+ * resultado do ensaio entra por romper() — aqui a pergunta é "quando", não
  * "quanto".
  */
 final class CorpoDeProva
