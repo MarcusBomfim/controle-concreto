@@ -1,69 +1,20 @@
 <?php
 
-declare(strict_types=1);
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
 
-/*
- * Ponto de entrada da aplicação web.
- *
- *   php -S localhost:8000 -t public public/index.php
- *
- * Antes da primeira execução:
- *   php ferramentas/migrar.php
- *   php ferramentas/semear.php
- */
+define('LARAVEL_START', microtime(true));
 
-/*
- * O servidor embutido do PHP não serve arquivo estático quando há um script de
- * roteamento. Devolver false devolve a tarefa a ele — é como o estilo.css
- * chega ao navegador sem passar pelo roteador.
- */
-if (PHP_SAPI === 'cli-server') {
-    $caminhoDoArquivo = __DIR__ . parse_url((string) $_SERVER['REQUEST_URI'], PHP_URL_PATH);
-
-    if (is_file($caminhoDoArquivo)) {
-        return false;
-    }
+// Determine if the application is in maintenance mode...
+if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+    require $maintenance;
 }
 
-require dirname(__DIR__) . '/src/autoload.php';
+// Register the Composer autoloader...
+require __DIR__.'/../vendor/autoload.php';
 
-use ControleConcreto\Infraestrutura\Banco\Conexao;
-use ControleConcreto\Infraestrutura\Banco\Migrador;
-use ControleConcreto\Web\Montagem;
-use ControleConcreto\Web\Requisicao;
-use ControleConcreto\Web\Resposta;
-use ControleConcreto\Web\Sessao;
-use ControleConcreto\Web\Visao;
+// Bootstrap Laravel and handle the request...
+/** @var Application $app */
+$app = require_once __DIR__.'/../bootstrap/app.php';
 
-$visao = Visao::padrao();
-
-try {
-    $conexao = Conexao::abrir();
-    $pendentes = Migrador::padrao($conexao)->pendentes();
-} catch (Throwable $erro) {
-    // Sem banco não há aplicação: melhor dizer o que fazer do que dar erro 500.
-    Resposta::html($visao->renderizar('erro', [
-        'titulo' => 'Banco de dados indisponível',
-        'detalhe' => 'Rode php ferramentas/migrar.php e tente de novo.',
-    ], 'Banco indisponível'), 500)->enviar();
-
-    return;
-}
-
-if ($pendentes !== []) {
-    Resposta::html($visao->renderizar('erro', [
-        'titulo' => 'Há migrations pendentes',
-        'detalhe' => 'Rode php ferramentas/migrar.php antes de usar a aplicação.',
-    ], 'Migrations pendentes'), 503)->enviar();
-
-    return;
-}
-
-$sessao = new Sessao();
-$sessao->iniciar();
-
-// Toda a montagem — repositórios, casos de uso, controladores e rotas — fica
-// em Montagem, para os testes atravessarem exatamente o mesmo caminho.
-Montagem::roteador($conexao, $sessao, $visao)
-    ->despachar(Requisicao::dasSuperglobais())
-    ->enviar();
+$app->handleRequest(Request::capture());
