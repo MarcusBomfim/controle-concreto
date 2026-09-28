@@ -6,6 +6,8 @@ use App\Http\Controllers\AgendaController;
 use App\Http\Controllers\ConcretagemController;
 use App\Http\Controllers\CorpoDeProvaController;
 use App\Http\Controllers\ElementoController;
+use App\Http\Controllers\LoteController;
+use App\Http\Controllers\NaoConformidadeController;
 use App\Http\Controllers\ObraController;
 use Illuminate\Support\Facades\Route;
 
@@ -60,4 +62,26 @@ Route::prefix('/obras/{obra}/concretagens/{numero}')
             ->name('corpos-de-prova.romper');
         Route::post('/corpos-de-prova/{identificacao}/descartar', [CorpoDeProvaController::class, 'descartar'])
             ->name('corpos-de-prova.descartar');
+    });
+
+Route::get('/obras/{obra}/lotes/novo', [LoteController::class, 'create'])->name('lotes.create');
+Route::post('/obras/{obra}/lotes', [LoteController::class, 'store'])->name('lotes.store');
+
+/*
+ * A não conformidade não tem rota própria: ela é sempre a do lote. Não
+ * existe não conformidade sem lote reprovado, e o número dela é o do lote —
+ * a URL diz isso.
+ */
+Route::prefix('/obras/{obra}/lotes/{numero}')
+    ->whereNumber('numero')
+    ->group(function (): void {
+        Route::get('/', [LoteController::class, 'show'])->name('lotes.show');
+        Route::post('/julgar', [LoteController::class, 'julgar'])->name('lotes.julgar');
+
+        Route::get('/nao-conformidade', [NaoConformidadeController::class, 'show'])
+            ->name('nao-conformidades.show');
+        Route::post('/nao-conformidade/providencias', [NaoConformidadeController::class, 'registrarProvidencia'])
+            ->name('nao-conformidades.providencias');
+        Route::post('/nao-conformidade/encerrar', [NaoConformidadeController::class, 'encerrar'])
+            ->name('nao-conformidades.encerrar');
     });

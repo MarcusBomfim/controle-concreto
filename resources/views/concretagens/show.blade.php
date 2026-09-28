@@ -43,9 +43,10 @@
                 {{ $concretagem->situacao()->rotulo() }}
             </span>
 
-            {{-- A tela do lote entra na Parte 5; por ora o número é só informação. --}}
             @if ($loteNumero !== null)
-                <span class="etiqueta">Lote {{ $loteNumero }}</span>
+                <a class="botao" href="{{ route('lotes.show', [$obra->codigo, $loteNumero]) }}">
+                    Lote {{ $loteNumero }}
+                </a>
             @endif
 
             @if ($emAndamento && $concretagem->cargasAceitas() !== [])

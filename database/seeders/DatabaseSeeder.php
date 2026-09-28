@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Aplicacao\FormarLote;
+use App\Aplicacao\JulgarLote;
 use App\Aplicacao\OperacoesDeConcretagem;
+use App\Aplicacao\TratarNaoConformidade;
 use App\Dominio\Concreto\Abatimento;
 use App\Dominio\Concreto\ClasseDeResistencia;
 use App\Dominio\Concretagem\Concretagem;
@@ -13,8 +16,14 @@ use App\Dominio\Ensaio\DiametroDoCorpoDeProva;
 use App\Dominio\Ensaio\IdadeDeEnsaio;
 use App\Dominio\Ensaio\ResultadoDeEnsaio;
 use App\Dominio\Estrutura\ElementoEstrutural;
+use App\Dominio\Estrutura\GrupoDeSolicitacao;
 use App\Dominio\Estrutura\RepositorioDeElementos;
 use App\Dominio\Estrutura\TipoDeElemento;
+use App\Dominio\Lote\CondicaoDePreparo;
+use App\Dominio\Lote\TipoDeAmostragem;
+use App\Dominio\NaoConformidade\Providencia;
+use App\Dominio\NaoConformidade\ResultadoDaProvidencia;
+use App\Dominio\NaoConformidade\TipoDeProvidencia;
 use App\Dominio\Obra\Obra;
 use App\Dominio\Obra\RepositorioDeObras;
 use DateTimeImmutable;
@@ -107,8 +116,103 @@ final class DatabaseSeeder extends Seeder
         $this->pilaresComExemplarVencido();
         $this->vigaComExemplarNaJanela();
         $this->sapataEmAndamento();
+        $this->lajeReprovada();
+        $this->vigaAprovada();
 
-        $this->command?->info('Carregado: 4 concretagens, com cargas, corpos de prova e resultados.');
+        $this->command?->info('Carregado: 6 concretagens, com cargas, corpos de prova e resultados.');
+
+        $this->carregarLotes();
+    }
+
+    /**
+     * Dois lotes julgados, um de cada veredito.
+     *
+     * O reprovado é o que interessa mostrar: ele abre a não conformidade
+     * sozinho, na mesma transação do julgamento, e já tem a primeira
+     * providência registrada — uma revisão de projeto que não fechou. O
+     * desfecho ainda não está sustentado, que é o estado real de quem acabou
+     * de receber um laudo ruim.
+     */
+    private function carregarLotes(): void
+    {
+        $formar = app(FormarLote::class);
+        $julgar = app(JulgarLote::class);
+
+        // Viga C25, um exemplar de 31,5 MPa: amostragem total com n ≤ 20
+        // estima o fck pelo menor exemplar, e 31,5 passa de 25.
+        $aceito = $formar->executar(
+            self::OBRA,
+            ClasseDeResistencia::C25,
+            GrupoDeSolicitacao::Horizontal,
+            CondicaoDePreparo::A,
+            TipoDeAmostragem::Total,
+            [6],
+        );
+        $julgar->executar(self::OBRA, $aceito->numero());
+
+        // Laje C30 com exemplares de 24,2 e 26,4: o menor manda, e 24,2 não
+        // chega aos 30 de projeto.
+        $reprovado = $formar->executar(
+            self::OBRA,
+            ClasseDeResistencia::C30,
+            GrupoDeSolicitacao::Horizontal,
+            CondicaoDePreparo::B,
+            TipoDeAmostragem::Total,
+            [5],
+        );
+        $julgar->executar(self::OBRA, $reprovado->numero());
+
+        app(TratarNaoConformidade::class)->registrarProvidencia(
+            self::OBRA,
+            $reprovado->numero(),
+            new Providencia(
+                TipoDeProvidencia::RevisaoDeProjeto,
+                // Hoje: a entidade recusa providência anterior à abertura da
+                // não conformidade, e a abertura acabou de acontecer no
+                // julgamento acima.
+                $this->dia(0),
+                'Recalculada a laje L3 com fck de 24,2 MPa. A flecha no vão maior passa do limite '
+                . 'de norma e a armadura negativa fica no limite. O projeto não fecha com a '
+                . 'resistência obtida: seguir para extração de testemunhos.',
+                ResultadoDaProvidencia::Desfavoravel,
+                'Marcus Bomfim',
+            ),
+        );
+
+        $this->command?->info('Carregado: 2 lotes julgados e 1 não conformidade em tratamento.');
+    }
+
+    /** Laje de 40 dias atrás: os exemplares de 28 dias já romperam, abaixo do projeto. */
+    private function lajeReprovada(): void
+    {
+        $concretagem = $this->abrir('L3-P4', 40, 'Concreteira Litoral');
+
+        $concretagem->receberCarga('NF-87001', 'BRA-1A10', 8.0, $this->as(40, '07:00'), $this->as(40, '07:40'), 100, null);
+        $concretagem->receberCarga('NF-87002', 'BRA-1A11', 8.0, $this->as(40, '08:30'), $this->as(40, '09:05'), 105, null);
+
+        $concretagem->moldar(1, $this->as(40, '08:00'), [IdadeDeEnsaio::VinteEOitoDias]);
+        $concretagem->moldar(2, $this->as(40, '09:20'), [IdadeDeEnsaio::VinteEOitoDias]);
+
+        $this->romper($concretagem, IdadeDeEnsaio::VinteEOitoDias, [24.2, 26.4]);
+
+        $concretagem->concluir();
+
+        $this->gravar($concretagem);
+    }
+
+    /** Viga de 38 dias atrás: o exemplar de 28 dias passou com folga. */
+    private function vigaAprovada(): void
+    {
+        $concretagem = $this->abrir('VIG-B1', 38, 'Usina Baixada');
+
+        $concretagem->receberCarga('NF-87310', 'BRA-3C42', 6.0, $this->as(38, '07:20'), $this->as(38, '07:55'), 78, null);
+        $concretagem->moldar(1, $this->as(38, '08:10'), [IdadeDeEnsaio::VinteEOitoDias]);
+
+        $this->romper($concretagem, IdadeDeEnsaio::VinteEOitoDias, [31.5]);
+
+        $concretagem->concluir();
+
+        $this->gravar($concretagem);
     }
 
     /** Laje de 25 dias atrás: 7 dias já rompidos, 28 dias chegando em 3 dias. */

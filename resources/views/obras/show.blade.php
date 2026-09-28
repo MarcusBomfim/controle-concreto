@@ -19,6 +19,7 @@
 
         <div class="cabecalho__acoes">
             <a class="botao" href="{{ route('elementos.create', $obra->codigo) }}">Novo elemento</a>
+            <a class="botao" href="{{ route('lotes.create', $obra->codigo) }}">Formar lote</a>
             <a class="botao botao--primario" href="{{ route('concretagens.create', $obra->codigo) }}">
                 Nova concretagem
             </a>
@@ -117,6 +118,52 @@
                             <td>
                                 <span class="etiqueta etiqueta--{{ $concretagem->situacao()->value }}">
                                     {{ $concretagem->situacao()->rotulo() }}
+                                </span>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
+
+    <h2 class="subtitulo">Lotes de aceitação</h2>
+
+    @if ($lotes === [])
+        <p class="cartao cartao--vazio">
+            Nenhum lote formado. O lote é o que a NBR 12655 aceita ou reprova — a concretagem
+            sozinha não tem veredito.
+        </p>
+    @else
+        <div class="rolagem">
+            <table class="tabela">
+                <thead>
+                    <tr>
+                        <th>Nº</th>
+                        <th>Classe</th>
+                        <th>Grupo</th>
+                        <th class="numerico">Volume</th>
+                        <th class="numerico">Concretagens</th>
+                        <th class="numerico">fck estimado</th>
+                        <th>Situação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($lotes as $lote)
+                        <tr>
+                            <td>
+                                <a href="{{ route('lotes.show', [$obra->codigo, $lote->numero()]) }}">
+                                    nº {{ $lote->numero() }}
+                                </a>
+                            </td>
+                            <td><strong>{{ $lote->classe->rotulo() }}</strong></td>
+                            <td>{{ $lote->grupo->rotulo() }}</td>
+                            <td class="numerico">{{ Formato::metrosCubicos($lote->volumeEmM3()) }}</td>
+                            <td class="numerico">{{ count($lote->concretagens()) }}</td>
+                            <td class="numerico">{{ Formato::mpa($lote->estimativa()?->fckEstimadoEmMPa) }}</td>
+                            <td>
+                                <span class="etiqueta etiqueta--{{ $lote->situacao()->value }}">
+                                    {{ $lote->situacao()->rotulo() }}
                                 </span>
                             </td>
                         </tr>

@@ -118,6 +118,7 @@ final class ObraController extends Controller
             'elementos' => $this->elementos->daObra($obra->codigo),
             'volumePorElemento' => $volumePorElemento,
             'concretagens' => $concretagens,
+            'lotes' => $this->lotes->daObra($obra->codigo),
         ]);
     }
 }

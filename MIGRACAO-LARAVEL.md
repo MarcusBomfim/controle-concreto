@@ -17,14 +17,14 @@ estimado, o tratamento da não conformidade — não mudaram uma linha.
 | 2 | Persistência: migrations, models Eloquent e repositórios | **concluída** |
 | 3 | Interface web: rotas, controllers, Blade e as telas de obra | **concluída** |
 | 4 | Agenda do laboratório e a tela de concretagem | **concluída** |
-| 5 | Lotes, memória de cálculo e não conformidade na tela | a fazer |
+| 5 | Lotes, memória de cálculo e não conformidade na tela | **concluída** |
 | 6 | Acesso por papel, seeders e documentação final | a fazer |
 
-Enquanto a migração não termina, esta branch tem **menos** funcionalidade que
-a `main`: o ciclo do canteiro já funciona inteiro pela tela — cadastrar a
-obra, abrir a concretagem, receber cada caminhão, moldar e lançar o resultado
-da prensa — mas os lotes e a não conformidade ainda não têm interface. É
-esperado — a `main` é que está no ar.
+O sistema já faz o ciclo inteiro pela tela: cadastrar a obra e as peças,
+abrir a concretagem, receber cada caminhão, moldar, lançar o resultado da
+prensa, formar o lote, julgá-lo pela norma e tratar a não conformidade até o
+desfecho. O que falta é o acesso por papel — hoje qualquer pessoa faz
+qualquer coisa —, os arquivos velhos e a documentação final.
 
 Para ver o que já existe:
 
@@ -46,7 +46,7 @@ cp .env.example .env && php artisan key:generate
 php artisan test
 ```
 
-São 197 testes: 125 de domínio, 26 de persistência e 46 de HTTP.
+São 228 testes: 125 de domínio, 25 de persistência e 78 de HTTP.
 
 Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque não
 precisam da aplicação: não sobem o container nem tocam em banco. Os de
@@ -150,6 +150,22 @@ Um destino absoluto ali seria redirecionamento aberto: a pessoa clica em
 Só se aceita caminho local, e `//outro.site` também é absoluto — por isso as
 duas checagens. Tem teste.
 
+**Onde a validação de formulário para, de propósito.** O Form Request da
+providência confere formato: tipo dentro do enum, data não no futuro, texto
+dentro do limite. Ele **não** confere o tamanho mínimo da descrição, nem o
+fck obrigatório no testemunho, nem "ensaio não destrutivo só pode ser
+informativo". São regras com razão de norma atrás, e a razão está escrita na
+`Providencia`, junto da mensagem. Repeti-las na camada de formulário as
+duplicaria sem o porquê — e "o campo descrição deve ter no mínimo 20
+caracteres" é pior do que "descreva a providência com ao menos 20
+caracteres: o que foi feito, onde e o que se concluiu".
+
+**A tela oferece; a entidade decide.** O formulário de encerramento só lista
+os desfechos que as providências já sustentam. Mas um POST não vem da tela,
+vem do navegador: quem quiser pode mandar `desfecho=estrutura_aceita` sem
+nenhum testemunho favorável. Quem recusa é a `NaoConformidade`, e tem teste
+para isso. A tela é conveniência; a garantia é do domínio.
+
 ## Decisões dos dados de demonstração
 
 **O seeder usa datas relativas a hoje.** A agenda do laboratório só faz
@@ -162,9 +178,18 @@ esperando caminhão.
 
 **Também o seeder passa pelo domínio.** Cada carga é julgada pelo cone e pelo
 relógio, e uma delas é devolvida de verdade — com 150 mm de abatimento numa
-peça de 100 ± 20. Gravar por SQL seria mais rápido e criaria estado que o
-sistema jamais produziria: carga devolvida com corpo de prova, concretagem
-concluída sem exemplar de 28 dias. A tela mostraria algo impossível.
+peça de 100 ± 20. Os dois lotes são julgados pela mesma conta da norma que a
+tela chama, e a não conformidade do reprovado nasce sozinha, no julgamento.
+Gravar por SQL seria mais rápido e criaria estado que o sistema jamais
+produziria: carga devolvida com corpo de prova, concretagem concluída sem
+exemplar de 28 dias, lote reprovado sem tratamento aberto. A tela mostraria
+algo impossível.
+
+**Uma regra do domínio apareceu ao escrever o seeder.** A primeira versão
+datava a providência de cinco dias atrás, e a entidade recusou: a não
+conformidade tinha sido aberta naquele instante, e providência anterior à
+abertura não existe. O seeder é o primeiro cliente do domínio a reclamar de
+uma sequência impossível — e reclamou certo.
 
 **O teste da agenda usa a idade de 91 dias de propósito.** É a única parte da
 aplicação que depende da hora em que o teste roda. A tolerância de 91 dias é
