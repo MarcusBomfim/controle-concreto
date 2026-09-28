@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AgendaController;
+use App\Http\Controllers\ConcretagemController;
+use App\Http\Controllers\CorpoDeProvaController;
 use App\Http\Controllers\ElementoController;
 use App\Http\Controllers\ObraController;
 use Illuminate\Support\Facades\Route;
@@ -15,11 +18,11 @@ use Illuminate\Support\Facades\Route;
  * o 405 com o cabeçalho Allow e o nome de rota que os templates usam em
  * route('obras.show', ...) em vez de montar o caminho na mão.
  *
- * A raiz ainda aponta para as obras. Ela passa a ser a agenda do
- * laboratório na próxima parte, quando a agenda tiver tela.
+ * A raiz é a agenda do laboratório: é a tela que se abre de manhã para
+ * saber o que a prensa tem que romper hoje.
  */
 
-Route::redirect('/', '/obras');
+Route::get('/', [AgendaController::class, 'index'])->name('agenda');
 
 Route::get('/obras', [ObraController::class, 'index'])->name('obras.index');
 Route::get('/obras/nova', [ObraController::class, 'create'])->name('obras.create');
@@ -34,3 +37,27 @@ Route::get('/obras/{obra}', [ObraController::class, 'show'])->name('obras.show')
 
 Route::get('/obras/{obra}/elementos/novo', [ElementoController::class, 'create'])->name('elementos.create');
 Route::post('/obras/{obra}/elementos', [ElementoController::class, 'store'])->name('elementos.store');
+
+Route::get('/obras/{obra}/concretagens/nova', [ConcretagemController::class, 'create'])->name('concretagens.create');
+Route::post('/obras/{obra}/concretagens', [ConcretagemController::class, 'store'])->name('concretagens.store');
+
+/*
+ * `whereNumber` prende o parâmetro a dígitos. Sem isso, /concretagens/nova
+ * também casaria aqui e o controlador receberia (int) 'nova' — zero — em vez
+ * de 404. Na versão em PHP puro essa restrição era parte da expressão regular
+ * escrita à mão para cada rota.
+ */
+Route::prefix('/obras/{obra}/concretagens/{numero}')
+    ->whereNumber('numero')
+    ->group(function (): void {
+        Route::get('/', [ConcretagemController::class, 'show'])->name('concretagens.show');
+        Route::post('/cargas', [ConcretagemController::class, 'receberCarga'])->name('concretagens.cargas');
+        Route::post('/moldagens', [ConcretagemController::class, 'moldar'])->name('concretagens.moldagens');
+        Route::post('/concluir', [ConcretagemController::class, 'concluir'])->name('concretagens.concluir');
+        Route::post('/cancelar', [ConcretagemController::class, 'cancelar'])->name('concretagens.cancelar');
+
+        Route::post('/corpos-de-prova/{identificacao}/romper', [CorpoDeProvaController::class, 'romper'])
+            ->name('corpos-de-prova.romper');
+        Route::post('/corpos-de-prova/{identificacao}/descartar', [CorpoDeProvaController::class, 'descartar'])
+            ->name('corpos-de-prova.descartar');
+    });

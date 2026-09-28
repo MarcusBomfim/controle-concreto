@@ -19,6 +19,9 @@
 
         <div class="cabecalho__acoes">
             <a class="botao" href="{{ route('elementos.create', $obra->codigo) }}">Novo elemento</a>
+            <a class="botao botao--primario" href="{{ route('concretagens.create', $obra->codigo) }}">
+                Nova concretagem
+            </a>
         </div>
     </header>
 
@@ -73,7 +76,10 @@
     <h2 class="subtitulo">Concretagens</h2>
 
     @if ($concretagens === [])
-        <p class="cartao cartao--vazio">Nenhuma concretagem registrada.</p>
+        <p class="cartao cartao--vazio">
+            Nenhuma concretagem registrada.
+            <a href="{{ route('concretagens.create', $obra->codigo) }}">Abra a primeira</a>.
+        </p>
     @else
         <div class="rolagem">
             <table class="tabela">
@@ -92,7 +98,11 @@
                 <tbody>
                     @foreach ($concretagens as $concretagem)
                         <tr>
-                            <td>nº {{ $concretagem->numero() }}</td>
+                            <td>
+                                <a href="{{ route('concretagens.show', [$obra->codigo, $concretagem->numero()]) }}">
+                                    nº {{ $concretagem->numero() }}
+                                </a>
+                            </td>
                             <td>{{ Formato::data($concretagem->data) }}</td>
                             <td>
                                 {{ $concretagem->elemento->identificacao() }} ·
@@ -114,7 +124,5 @@
                 </tbody>
             </table>
         </div>
-
-        <p class="dica">A tela da concretagem entra na próxima parte da migração.</p>
     @endif
 @endsection

@@ -34,9 +34,10 @@ final class ObrasTest extends TestCase
     // ---------- listagem ----------
 
     #[Test]
-    public function a_raiz_redireciona_para_as_obras(): void
+    public function a_lista_de_obras_abre_em_obras(): void
     {
-        $this->get('/')->assertRedirect('/obras');
+        // A raiz é a agenda do laboratório desde a Parte 4.
+        $this->get('/obras')->assertOk();
     }
 
     #[Test]

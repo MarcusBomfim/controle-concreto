@@ -8,11 +8,12 @@
 </head>
 <body>
     <header class="topo">
-        <a class="topo__marca" href="{{ route('obras.index') }}">
+        <a class="topo__marca" href="{{ route('agenda') }}">
             <span class="topo__sigla">CC</span>
             <span>Controle de Concreto</span>
         </a>
         <nav class="topo__menu">
+            <a href="{{ route('agenda') }}">Agenda</a>
             <a href="{{ route('obras.index') }}">Obras</a>
         </nav>
         <p class="topo__legenda">Recebimento, corpos de prova e aceitação pela NBR 12655</p>

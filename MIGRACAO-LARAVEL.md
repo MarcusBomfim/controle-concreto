@@ -16,14 +16,15 @@ estimado, o tratamento da não conformidade — não mudaram uma linha.
 | 1 | Esqueleto, domínio portado e testes de domínio em PHPUnit | **concluída** |
 | 2 | Persistência: migrations, models Eloquent e repositórios | **concluída** |
 | 3 | Interface web: rotas, controllers, Blade e as telas de obra | **concluída** |
-| 4 | Agenda do laboratório e a tela de concretagem | a fazer |
+| 4 | Agenda do laboratório e a tela de concretagem | **concluída** |
 | 5 | Lotes, memória de cálculo e não conformidade na tela | a fazer |
 | 6 | Acesso por papel, seeders e documentação final | a fazer |
 
 Enquanto a migração não termina, esta branch tem **menos** funcionalidade que
-a `main`: já dá para cadastrar obra e elementos pela tela, mas a agenda do
-laboratório, a concretagem e os lotes ainda não têm interface. É esperado —
-a `main` é que está no ar.
+a `main`: o ciclo do canteiro já funciona inteiro pela tela — cadastrar a
+obra, abrir a concretagem, receber cada caminhão, moldar e lançar o resultado
+da prensa — mas os lotes e a não conformidade ainda não têm interface. É
+esperado — a `main` é que está no ar.
 
 Para ver o que já existe:
 
@@ -45,7 +46,7 @@ cp .env.example .env && php artisan key:generate
 php artisan test
 ```
 
-São 165 testes: 125 de domínio, 26 de persistência e 14 de HTTP.
+São 197 testes: 125 de domínio, 26 de persistência e 46 de HTTP.
 
 Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque não
 precisam da aplicação: não sobem o container nem tocam em banco. Os de
@@ -127,6 +128,50 @@ um `style` do CSS já produziu um bug invisível no projeto irmão.
 middleware de CSRF do Laravel se desliga sozinho quando detecta que está
 rodando em teste. O que se prova é que o formulário carrega o campo; o resto
 é responsabilidade do framework, que tem os próprios testes.
+
+**Componente Blade no lugar do `require` com variáveis soltas.** Os
+formulários de romper e descartar aparecem em duas telas. Na `main` isso era
+um `require` de um arquivo que lia `$base`, `$voltar`, `$podeRomper`,
+`$motivo`, `$diametros` e `$agora` do escopo de quem incluía — uma assinatura
+que só existia num comentário, e esquecer uma delas dava aviso do PHP em
+produção. Virou componente anônimo: `@props` é a assinatura de verdade, com
+valores padrão, e o que não for declarado não entra.
+
+**`whereNumber` na rota.** Sem a restrição, `/concretagens/abc` casaria com
+`/concretagens/{numero}`, o controlador receberia `(int) 'abc'` — zero — e a
+tela diria "não existe concretagem 0" em vez de devolver 404. Na `main` essa
+restrição fazia parte da expressão regular escrita à mão para cada rota.
+
+**O campo `voltar` é entrada do usuário.** O mesmo POST volta para a agenda
+ou para a tela da concretagem, e quem diz de onde veio é um campo escondido
+do formulário — que vem do navegador, e portanto pode vir de qualquer um.
+Um destino absoluto ali seria redirecionamento aberto: a pessoa clica em
+"Confirmar descarte" no nosso domínio e o navegador a larga em outro site.
+Só se aceita caminho local, e `//outro.site` também é absoluto — por isso as
+duas checagens. Tem teste.
+
+## Decisões dos dados de demonstração
+
+**O seeder usa datas relativas a hoje.** A agenda do laboratório só faz
+sentido contra o relógio: ela pergunta o que está na janela de rompimento
+*agora*. Um seeder com datas fixas mostraria a tela cheia no dia em que foi
+escrito e vazia no dia seguinte. As quatro concretagens são posicionadas para
+que cada estado apareça: exemplar vencido, exemplar na janela neste instante,
+rompimento previsto para daqui a três dias, e uma concretagem aberta
+esperando caminhão.
+
+**Também o seeder passa pelo domínio.** Cada carga é julgada pelo cone e pelo
+relógio, e uma delas é devolvida de verdade — com 150 mm de abatimento numa
+peça de 100 ± 20. Gravar por SQL seria mais rápido e criaria estado que o
+sistema jamais produziria: carga devolvida com corpo de prova, concretagem
+concluída sem exemplar de 28 dias. A tela mostraria algo impossível.
+
+**O teste da agenda usa a idade de 91 dias de propósito.** É a única parte da
+aplicação que depende da hora em que o teste roda. A tolerância de 91 dias é
+de 48 h, então um corpo de prova moldado há exatamente 91 dias ao meio-dia
+está dentro da janela a qualquer hora. Com a idade de 7 dias — 6 h de
+tolerância — o teste passaria de manhã e falharia à noite, que é o pior tipo
+de teste que existe.
 
 ## As pastas antigas
 
