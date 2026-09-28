@@ -15,14 +15,21 @@ estimado, o tratamento da não conformidade — não mudaram uma linha.
 | --- | --- | --- |
 | 1 | Esqueleto, domínio portado e testes de domínio em PHPUnit | **concluída** |
 | 2 | Persistência: migrations, models Eloquent e repositórios | **concluída** |
-| 3 | Interface web: rotas, controllers e Blade | a fazer |
+| 3 | Interface web: rotas, controllers, Blade e as telas de obra | **concluída** |
 | 4 | Agenda do laboratório e a tela de concretagem | a fazer |
 | 5 | Lotes, memória de cálculo e não conformidade na tela | a fazer |
 | 6 | Acesso por papel, seeders e documentação final | a fazer |
 
 Enquanto a migração não termina, esta branch tem **menos** funcionalidade que
-a `main`: o domínio, a persistência e os casos de uso funcionam, mas não há
-nenhuma tela. É esperado — a `main` é que está no ar.
+a `main`: já dá para cadastrar obra e elementos pela tela, mas a agenda do
+laboratório, a concretagem e os lotes ainda não têm interface. É esperado —
+a `main` é que está no ar.
+
+Para ver o que já existe:
+
+```bash
+php artisan migrate --seed && php artisan serve
+```
 
 ## Como rodar
 
@@ -38,7 +45,7 @@ cp .env.example .env && php artisan key:generate
 php artisan test
 ```
 
-São 151 testes: 125 de domínio e 26 de persistência.
+São 165 testes: 125 de domínio, 26 de persistência e 14 de HTTP.
 
 Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque não
 precisam da aplicação: não sobem o container nem tocam em banco. Os de
@@ -90,6 +97,36 @@ providência são imutáveis: gravados uma vez, não mudam. A intenção é
 "ignore se já existe", e o `upsert()` do Laravel com a lista de colunas
 vazia **não** faz isso — ele vira um `insert` comum e estoura na chave
 duplicada.
+
+## Decisões da interface
+
+**Duas camadas de validação, com propósitos diferentes.** O Form Request
+confere formato — campo obrigatório, tamanho, valor dentro do enum — e
+devolve uma lista de erros por campo para o formulário. A entidade continua
+recusando o que é invariante: peça estrutural com C15, por exemplo, que
+nenhuma regra de formulário saberia julgar. Não é duplicação: o Form Request
+existe para a tela, e o domínio vale em qualquer caminho — seeder, comando
+de console, teste.
+
+**`prepareForValidation` para o formato brasileiro.** O formulário manda
+"42,0" e o PHP quer ponto. A conversão fica no Form Request, antes das
+regras, e não espalhada pelo controlador.
+
+**`Rule::enum`.** A lista de tipos de elemento e de classes de resistência
+não é repetida na validação: a regra aponta para o enum do domínio. Acrescentar
+uma classe na NBR 8953 mexe num lugar só.
+
+**Formatação virou classe, não função global.** `App\Support\Formato` tem
+os `mpa()`, `metrosCubicos()` e afins que eram funções globais, e os
+templates a importam com `@use`. O motivo não é estilo: função global não se
+testa sem carregar o arquivo inteiro, e há um método ali —
+`larguraCss()` — que existe justamente porque formatar com vírgula dentro de
+um `style` do CSS já produziu um bug invisível no projeto irmão.
+
+**O que não deu para testar.** "POST sem token é recusado" não tem teste: o
+middleware de CSRF do Laravel se desliga sozinho quando detecta que está
+rodando em teste. O que se prova é que o formulário carrega o campo; o resto
+é responsabilidade do framework, que tem os próprios testes.
 
 ## As pastas antigas
 
