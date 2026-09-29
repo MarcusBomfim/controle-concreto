@@ -18,6 +18,8 @@ use App\Persistencia\RepositorioDeLotesEmBanco;
 use App\Persistencia\RepositorioDeNaoConformidadesEmBanco;
 use App\Persistencia\RepositorioDeObrasEmBanco;
 use App\Persistencia\RepositorioDeUsuariosEmBanco;
+use App\Models\Conta;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -52,8 +54,21 @@ class AppServiceProvider extends ServiceProvider
         //
     }
 
+    /**
+     * As duas permissões do sistema, como Gates.
+     *
+     * A regra em si continua no enum `Papel` do domínio: quem sabe que o
+     * gestor não opera e que só o engenheiro decide é ele. O Gate é o
+     * adaptador — é o que permite escrever `can:decidir` numa rota e
+     * `@can('operar')` num template, em vez de espalhar
+     * `if ($usuario->papel === ...)` pelos controladores.
+     *
+     * Na versão em PHP puro isto era a classe Guarda, que embrulhava cada
+     * ação do controlador numa closure de permissão montada à mão.
+     */
     public function boot(): void
     {
-        //
+        Gate::define('operar', static fn (Conta $conta): bool => $conta->papel->podeOperar());
+        Gate::define('decidir', static fn (Conta $conta): bool => $conta->papel->podeDecidir());
     }
 }

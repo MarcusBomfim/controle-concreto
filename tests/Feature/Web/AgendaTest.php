@@ -12,6 +12,7 @@ use App\Dominio\Obra\RepositorioDeObras;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Apoio\Autenticacao;
 use Tests\Apoio\ObjetosDeExemplo;
 use Tests\TestCase;
 
@@ -27,12 +28,15 @@ use Tests\TestCase;
  */
 final class AgendaTest extends TestCase
 {
+    use Autenticacao;
     use ObjetosDeExemplo;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->comoEngenheiro();
 
         app(RepositorioDeObras::class)->salvar($this->obraDeTeste());
         app(RepositorioDeElementos::class)->salvar('OBR-2026-007', $this->lajeDeTeste());

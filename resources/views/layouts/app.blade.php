@@ -12,11 +12,25 @@
             <span class="topo__sigla">CC</span>
             <span>Controle de Concreto</span>
         </a>
-        <nav class="topo__menu">
-            <a href="{{ route('agenda') }}">Agenda</a>
-            <a href="{{ route('obras.index') }}">Obras</a>
-        </nav>
-        <p class="topo__legenda">Recebimento, corpos de prova e aceitação pela NBR 12655</p>
+
+        {{-- @auth e @guest leem o guard da sessão; não é preciso passar o
+             usuário do controlador para o template. --}}
+        @auth
+            <nav class="topo__menu">
+                <a href="{{ route('agenda') }}">Agenda do laboratório</a>
+                <a href="{{ route('obras.index') }}">Obras</a>
+            </nav>
+            <div class="topo__usuario">
+                <span class="topo__nome">{{ auth()->user()->nome }}</span>
+                <span class="etiqueta">{{ auth()->user()->papel->rotulo() }}</span>
+                <form method="post" action="{{ route('acesso.sair') }}">
+                    @csrf
+                    <button type="submit" class="botao botao--discreto">Sair</button>
+                </form>
+            </div>
+        @else
+            <p class="topo__legenda">Recebimento, corpos de prova e aceitação pela NBR 12655</p>
+        @endauth
     </header>
 
     <main class="pagina">

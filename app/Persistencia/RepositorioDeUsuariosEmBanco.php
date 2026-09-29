@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Persistencia;
 
-use App\Dominio\Usuario\Papel;
 use App\Dominio\Usuario\RepositorioDeUsuarios;
 use App\Dominio\Usuario\Usuario;
 use App\Models\Conta as ContaRegistro;
@@ -60,7 +59,7 @@ final class RepositorioDeUsuariosEmBanco implements RepositorioDeUsuarios
         return new Usuario(
             (string) $registro->email,
             (string) $registro->nome,
-            Papel::from((string) $registro->papel),
+            $registro->papel,
             (string) $registro->hash_senha,
             (bool) $registro->ativo,
         );

@@ -9,6 +9,7 @@ use App\Dominio\Estrutura\RepositorioDeElementos;
 use App\Dominio\Obra\RepositorioDeObras;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Apoio\Autenticacao;
 use Tests\Apoio\ObjetosDeExemplo;
 use Tests\TestCase;
 
@@ -22,8 +23,16 @@ use Tests\TestCase;
  */
 final class ObrasTest extends TestCase
 {
+    use Autenticacao;
     use ObjetosDeExemplo;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->comoEngenheiro();
+    }
 
     private function comObraGravada(): void
     {

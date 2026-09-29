@@ -18,11 +18,15 @@
         </div>
 
         <div class="cabecalho__acoes">
-            <a class="botao" href="{{ route('elementos.create', $obra->codigo) }}">Novo elemento</a>
-            <a class="botao" href="{{ route('lotes.create', $obra->codigo) }}">Formar lote</a>
-            <a class="botao botao--primario" href="{{ route('concretagens.create', $obra->codigo) }}">
-                Nova concretagem
-            </a>
+            @can('decidir')
+                <a class="botao" href="{{ route('elementos.create', $obra->codigo) }}">Novo elemento</a>
+                <a class="botao" href="{{ route('lotes.create', $obra->codigo) }}">Formar lote</a>
+            @endcan
+            @can('operar')
+                <a class="botao botao--primario" href="{{ route('concretagens.create', $obra->codigo) }}">
+                    Nova concretagem
+                </a>
+            @endcan
         </div>
     </header>
 
@@ -79,7 +83,9 @@
     @if ($concretagens === [])
         <p class="cartao cartao--vazio">
             Nenhuma concretagem registrada.
-            <a href="{{ route('concretagens.create', $obra->codigo) }}">Abra a primeira</a>.
+            @can('operar')
+                <a href="{{ route('concretagens.create', $obra->codigo) }}">Abra a primeira</a>.
+            @endcan
         </p>
     @else
         <div class="rolagem">

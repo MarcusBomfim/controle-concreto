@@ -9,7 +9,11 @@
             <p class="cabecalho__nota">Cada obra tem suas peças, suas concretagens e seus lotes de aceitação.</p>
         </div>
         <div class="cabecalho__acoes">
-            <a class="botao botao--primario" href="{{ route('obras.create') }}">Nova obra</a>
+            {{-- @can consulta o mesmo Gate que a rota exige: a tela não
+                 oferece o que o POST vai recusar. --}}
+            @can('decidir')
+                <a class="botao botao--primario" href="{{ route('obras.create') }}">Nova obra</a>
+            @endcan
         </div>
     </header>
 

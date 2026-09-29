@@ -26,6 +26,9 @@ use App\Dominio\NaoConformidade\ResultadoDaProvidencia;
 use App\Dominio\NaoConformidade\TipoDeProvidencia;
 use App\Dominio\Obra\Obra;
 use App\Dominio\Obra\RepositorioDeObras;
+use App\Dominio\Usuario\Papel;
+use App\Dominio\Usuario\RepositorioDeUsuarios;
+use App\Dominio\Usuario\Usuario;
 use DateTimeImmutable;
 use Illuminate\Database\Seeder;
 
@@ -51,6 +54,8 @@ final class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        $this->carregarContas();
+
         $obras = app(RepositorioDeObras::class);
 
         if ($obras->existe(self::OBRA)) {
@@ -69,6 +74,40 @@ final class DatabaseSeeder extends Seeder
 
         $this->carregarElementos();
         $this->carregarConcretagens();
+    }
+
+    /**
+     * Uma conta por papel, para dar para entrar e ver a diferença.
+     *
+     * As senhas estão em texto aqui porque este arquivo é dado de
+     * demonstração, não configuração de produção — e a senha em texto morre
+     * na chamada a `Usuario::criar`, que é o único caminho do sistema que a
+     * recebe. Do hash em diante ninguém mais a vê.
+     */
+    private function carregarContas(): void
+    {
+        $usuarios = app(RepositorioDeUsuarios::class);
+
+        $contas = [
+            ['engenheiro@concreto.dev', 'Marcus Bomfim', Papel::Engenheiro, 'Engenheiro@123'],
+            ['laboratorio@concreto.dev', 'Ana Ribeiro', Papel::Laboratorista, 'Laboratorio@123'],
+            ['gestor@concreto.dev', 'Paulo Tavares', Papel::Gestor, 'Gestor@123'],
+        ];
+
+        $criadas = 0;
+
+        foreach ($contas as [$email, $nome, $papel, $senha]) {
+            if ($usuarios->existe($email)) {
+                continue;
+            }
+
+            $usuarios->salvar(Usuario::criar($email, $nome, $papel, $senha));
+            $criadas++;
+        }
+
+        if ($criadas > 0) {
+            $this->command?->info("Carregado: {$criadas} conta(s) de demonstração.");
+        }
     }
 
     private function carregarElementos(): void

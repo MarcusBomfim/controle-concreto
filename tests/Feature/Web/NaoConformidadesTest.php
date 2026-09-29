@@ -11,6 +11,7 @@ use App\Dominio\Obra\RepositorioDeObras;
 use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Apoio\Autenticacao;
 use Tests\Apoio\ObjetosDeExemplo;
 use Tests\TestCase;
 
@@ -25,6 +26,7 @@ use Tests\TestCase;
  */
 final class NaoConformidadesTest extends TestCase
 {
+    use Autenticacao;
     use ObjetosDeExemplo;
     use RefreshDatabase;
 
@@ -33,6 +35,8 @@ final class NaoConformidadesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->comoEngenheiro();
 
         $this->hoje = (new DateTimeImmutable('today'))->format('Y-m-d');
 

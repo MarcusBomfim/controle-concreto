@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @use('App\Support\Formato')
+@use('Illuminate\Support\Facades\Gate')
 
 @section('titulo', 'Lote nº ' . $lote->numero() . ' — ' . $obra->nome)
 
@@ -48,7 +49,7 @@
                 </a>
             @endif
 
-            @if ($lote->podeSerJulgado())
+            @if ($lote->podeSerJulgado() && Gate::allows('decidir'))
                 <form method="post" action="{{ route('lotes.julgar', [$obra->codigo, $lote->numero()]) }}"
                       onsubmit="return confirm('Julgar o lote nº {{ $lote->numero() }}? A conta da norma é feita com os exemplares atuais e o veredito fica registrado.');">
                     @csrf

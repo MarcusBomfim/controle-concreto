@@ -12,35 +12,41 @@ O sistema resolve isso amarrando cada corpo de prova ao caminhão que o originou
 
 ## Requisitos
 
-**PHP 8.1 ou superior** — o projeto usa enums, `readonly` e `match`.
+**PHP 8.3 ou superior** e **Composer**. O banco é SQLite, sem servidor.
 
 ```bash
 php -v
 ```
 
-A extensão `pdo_sqlite` já vem nas distribuições oficiais. Não é preciso Composer nem servidor de banco.
+A extensão `pdo_sqlite` já vem nas distribuições oficiais.
 
 ## Como rodar
 
 ```bash
-php ferramentas/migrar.php
+composer install
 ```
 
 ```bash
-php ferramentas/semear.php
+cp .env.example .env && php artisan key:generate
 ```
 
-O banco é criado em `banco/controle-concreto.sqlite`, fora do controle de versão. A carga de demonstração é feita em PHP, pelo domínio, com datas relativas a hoje — para a agenda mostrar corpos de prova vencidos, na janela e futuros. Um SQL com datas fixas envelheceria em uma semana.
+```bash
+php artisan migrate --seed
+```
+
+O banco é criado em `database/database.sqlite`, fora do controle de versão. A carga de demonstração é feita pelo domínio, com datas relativas a hoje — para a agenda mostrar corpos de prova vencidos, na janela e futuros. Um SQL com datas fixas envelheceria em uma semana.
 
 ```bash
-php -S localhost:8000 -t public public/index.php
+php artisan serve
 ```
 
 Abra <http://localhost:8000>. A primeira tela é o login; depois dele, a agenda do laboratório.
 
+Para recarregar tudo do zero: `php artisan migrate:fresh --seed`.
+
 ### Contas de demonstração
 
-Criadas por `php ferramentas/semear.php` e destinadas apenas a desenvolvimento:
+Criadas por `php artisan migrate --seed` e destinadas apenas a desenvolvimento:
 
 | E-mail | Senha | Papel | Pode |
 | --- | --- | --- | --- |
@@ -48,60 +54,62 @@ Criadas por `php ferramentas/semear.php` e destinadas apenas a desenvolvimento:
 | laboratorio@concreto.dev | `Laboratorio@123` | Laboratorista | concretagens, cargas, moldagens, rompimentos e descartes |
 | gestor@concreto.dev | `Gestor@123` | Gestor | somente leitura |
 
-As senhas não estão em arquivo nenhum: o `semear.php` gera o hash com `password_hash()` na hora, com sal aleatório. Conta que já existe não é sobrescrita.
+No banco só vai o hash: a senha em texto morre dentro de `Usuario::criar`, que chama `password_hash()` com sal aleatório. Conta que já existe não é sobrescrita.
 
-A carga de demonstração tem datas relativas a hoje: corpos de prova vencidos, corpos de prova na janela de rompimento neste momento, outros para os próximos dias, uma concretagem em andamento e um lote reprovado com a não conformidade aberta. Para recarregar do zero, apague `banco/controle-concreto.sqlite` e rode `migrar.php` e `semear.php` de novo.
+A carga de demonstração tem datas relativas a hoje: corpos de prova vencidos, corpos de prova na janela de rompimento neste momento, outros para os próximos dias, uma concretagem em andamento e um lote reprovado com a não conformidade aberta.
 
 ## Como rodar os testes
 
 ```bash
-php testes/executar.php
+php artisan test
 ```
 
-Os testes de infraestrutura e de aplicação sobem um SQLite em memória e aplicam as migrations reais. Os testes em `testes/web/FluxoTest.php` atravessam a aplicação inteira sem servidor — login, o dia de concretagem pelos formulários, o resultado lançado da agenda, o lote julgado, a não conformidade tratada e encerrada, o 403 do gestor — usando a mesma `Montagem` que o `public/index.php`, com uma `Sessao` em memória no lugar da sessão do PHP. Qualquer aviso emitido por um template vira falha.
+São 257 testes: 125 de domínio, 25 de persistência e 107 de HTTP.
+
+Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque não precisam da aplicação: não sobem o container nem tocam em banco. Os de persistência e os de HTTP usam `RefreshDatabase`, que aplica as migrations reais num SQLite em memória e desfaz tudo ao fim de cada teste.
+
+Os de HTTP sobem a aplicação inteira e atravessam roteador, middleware de permissão, Form Request, controlador e Blade: o dia de concretagem pelos formulários, o resultado lançado da agenda, o lote julgado com a conta aberta, a não conformidade tratada e encerrada, e o 403 do gestor.
 
 ## Estrutura
 
 ```text
 controle-concreto/
-├── banco/
-│   └── migrations/         # SQL versionado, aplicado em ordem
-├── ferramentas/
-│   ├── migrar.php
-│   └── semear.php
-├── src/
-│   ├── autoload.php
-│   ├── Dominio/
+├── app/
+│   ├── Dominio/            # o coração: sem uma linha de framework
 │   │   ├── Regras.php
 │   │   ├── ExcecaoDeDominio.php
-│   │   ├── Obra/           # Obra e o repositório
+│   │   ├── Obra/           # Obra e a interface do repositório
 │   │   ├── Concreto/       # ClasseDeResistencia, Abatimento
-│   │   ├── Estrutura/      # ElementoEstrutural, TipoDeElemento e o repositório
-│   │   ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao e o repositório
+│   │   ├── Estrutura/      # ElementoEstrutural, TipoDeElemento, GrupoDeSolicitacao
+│   │   ├── Concretagem/    # Concretagem, Carga, MotivoDeDevolucao
 │   │   ├── Ensaio/         # CorpoDeProva, Exemplar, IdadeDeEnsaio, ResultadoDeEnsaio
 │   │   ├── Lote/           # Lote, CalculadoraDeFckEstimado, Psi6, EstimativaDeFck
 │   │   ├── NaoConformidade/ # NaoConformidade, Providencia, Desfecho
 │   │   └── Usuario/        # Usuario, Papel
 │   ├── Aplicacao/          # casos de uso e a agenda do laboratório
-│   ├── Infraestrutura/
-│   │   ├── Banco/          # Conexao, Migrador
-│   │   └── Repositorio/    # implementações em SQLite
-│   ├── Web/                # Roteador, Requisicao, Resposta, Sessao, Visao, Guarda, Montagem
-│   │   └── Controlador/    # um por tela: acesso, laboratório, obras, concretagens, lotes, não conformidades
-│   └── ajudantes.php       # e(), caminho(), mpa()… — funções globais dos templates
+│   ├── Persistencia/       # os repositórios, em Eloquent e Query Builder
+│   ├── Models/             # Obra, Elemento, Conta — registros de tabela, não entidades
+│   ├── Http/
+│   │   ├── Controllers/    # um por tela: acesso, agenda, obras, concretagens, lotes, NCs
+│   │   ├── Requests/       # validação de formulário
+│   │   └── Middleware/     # ExigirContaAtiva
+│   ├── Support/Formato.php # formatação para as telas
+│   └── Providers/          # o Service Container: interface → implementação, e os Gates
+├── database/
+│   ├── migrations/         # Schema Builder, mais os gatilhos que ele não cobre
+│   └── seeders/            # carga de demonstração, feita pelo domínio
+├── resources/views/        # Blade: layout, agenda, acesso/, obras/, concretagens/,
+│                           # lotes/, nao-conformidades/, components/
+├── routes/web.php          # as rotas e as permissões (can:operar, can:decidir)
 ├── public/
-│   ├── index.php           # ponto de entrada: monta as dependências e as rotas
+│   ├── index.php
 │   └── estilo.css
-├── visoes/                 # templates PHP: layout, agenda, acesso/, obras/, concretagens/, lotes/, nao-conformidades/
-├── .github/workflows/ci.yml  # sintaxe, testes e aplicação no ar, em PHP 8.1 e 8.4
-├── testes/
-│   ├── executar.php
-│   ├── Executor.php        # executor de testes mínimo, sem PHPUnit
-│   ├── ajuda.php           # fábricas compartilhadas entre os testes
-│   ├── dominio/
-│   ├── infraestrutura/
-│   ├── aplicacao/
-│   └── web/
+├── tests/
+│   ├── Apoio/              # traits compartilhados: objetos de exemplo, login, regras
+│   ├── Unit/Dominio/       # 125 testes, sem container e sem banco
+│   └── Feature/            # persistência e HTTP, com SQLite em memória
+├── .github/workflows/ci.yml  # testes em PHP 8.3 e 8.4
+├── MIGRACAO-LARAVEL.md     # o que o framework substituiu, peça por peça
 ├── composer.json
 └── README.md
 ```
@@ -145,7 +153,7 @@ Quem não é da construção tropeça nos termos, então aqui vão os que o cód
 | Só existem cilindros de 100 e 150 mm | `DiametroDoCorpoDeProva` | NBR 5738 |
 | Resultado fora da janela de idade é recusado | `CorpoDeProva::romper` | NBR 5739 |
 | Corpo de prova descartado exige motivo | `CorpoDeProva::descartar` | — |
-| Rompido e descartado são finais | gatilhos em `003_resultados_de_ensaio.sql` | — |
+| Rompido e descartado são finais | gatilhos na migration `000003` | — |
 | A resistência do exemplar é a maior dos dois corpos de prova | `Exemplar::resistenciaEmMPa` | NBR 5739 |
 | Lote tem um fck e um grupo de solicitação só | `Lote::adicionarConcretagem` | NBR 12655 |
 | Lote de no máximo 50 m³ (vertical) ou 100 m³ (horizontal), em até 3 dias | `Lote::adicionarConcretagem` | NBR 12655 |
@@ -231,7 +239,7 @@ Quando o caminhão chega, o canteiro faz duas coisas antes de descarregar: olha 
 
 **O vencido só descarta.** A agenda não oferece o campo de resultado para corpo de prova fora da janela, e o domínio recusaria de qualquer jeito. O que ela oferece é o descarte com motivo já sugerido.
 
-**Toda alteração é POST com token.** Cada formulário leva o token da sessão, o controlador confere com `hash_equals`, e depois do POST vem um redirecionamento 303 — atualizar a página não reenvia o formulário. GET nunca altera nada.
+**Toda alteração é POST com token.** Cada formulário leva `@csrf`, o middleware do Laravel confere, e depois do POST vem um redirecionamento — atualizar a página não reenvia o formulário. GET nunca altera nada.
 
 **A classe e o grupo do lote não são digitados.** Saem da primeira concretagem marcada; se as outras não combinarem, o domínio recusa com a mensagem que explica por quê. Pedir para escolher "C30" numa lista abriria espaço para o engano que a regra existe para impedir.
 
@@ -257,13 +265,13 @@ Três papéis, que espelham quem circula no controle tecnológico:
 | Laboratorista | sim | não |
 | Gestor | não | não — só consulta |
 
-As permissões moram no enum `Papel` — `podeOperar()`, `podeDecidir()` — e a `Montagem` só diz qual rota exige qual. Nenhum controlador tem `if ($papel === ...)`. A interface esconde os botões que o papel não pode usar, mas isso é cortesia: quem enviar o POST direto recebe 403, porque a `Guarda` confere no servidor, a cada requisição, lendo o usuário no banco.
+As permissões moram no enum `Papel` — `podeOperar()`, `podeDecidir()`. Dois Gates as expõem ao framework, e as rotas dizem qual exigem: `can:operar`, `can:decidir`. Nenhum controlador tem `if ($papel === ...)`. A interface esconde os botões que o papel não pode usar, mas isso é cortesia: quem enviar o POST direto recebe 403, porque a permissão é conferida no servidor, a cada requisição.
 
-Senha só como hash bcrypt (`password_hash`), login com uma mensagem única para e-mail e senha errados, hash de isca para conta inexistente custar o mesmo tempo, sessão regenerada no login, token anti-CSRF em todo formulário e redirecionamento só para caminho local. O que não há: limite de tentativas de login e recuperação de senha — próximos passos se o sistema for para produção.
+Senha só como hash bcrypt, login com uma mensagem única para e-mail e senha errados, resposta de duração fixa para e-mail existente e inexistente demorarem o mesmo, sessão regenerada no login, `@csrf` em todo formulário e destino pós-login guardado na sessão — nunca na URL. Conta desativada não entra, e desativá-la derruba a sessão já aberta. O que não há: limite de tentativas de login e recuperação de senha — próximos passos se o sistema for para produção.
 
 ## Banco de dados
 
-SQLite, pelos mesmos motivos de sempre: roda sem servidor, e o SQL é padrão o bastante para migrar depois. Chave estrangeira ligada em toda conexão (`PRAGMA foreign_keys = ON` — o SQLite a ignora por padrão), e as regras críticas repetidas em `CHECK`: o banco recusa `fck = 27` e `idade_dias = 14` tanto quanto o domínio.
+SQLite, pelos mesmos motivos de sempre: roda sem servidor, e o schema é padrão o bastante para migrar depois. Chave estrangeira ligada em toda conexão — o SQLite a ignora por padrão, e o driver do Laravel liga o `PRAGMA` sozinho. As regras críticas ficam repetidas no banco: `$tabela->enum()` gera o `CHECK` que recusa `fck = 27` e `idade_dias = 14` tanto quanto o domínio, e as que dependem de mais de uma coluna — "lote julgado exige fck estimado", "o fck obtido só existe em testemunho" — viraram gatilhos, porque o SQLite não aceita acrescentar `CHECK` depois que a tabela existe.
 
 ### A tabela mais consultada
 
@@ -273,29 +281,33 @@ A pergunta que o laboratório faz todo dia de manhã é **"o que rompe hoje?"** 
 
 ### A agenda não hidrata o agregado
 
-`AgendaDoLaboratorio` é uma interface de leitura. A implementação faz um `SELECT` com quatro `JOIN` e devolve `ItemDaAgenda` — um modelo de leitura com tudo que quem vai romper precisa: obra, peça, fck de projeto, carga, nota fiscal, janela. Não monta `Concretagem` nenhuma só para listar cilindros.
+`AgendaDoLaboratorio` é uma interface de leitura. A implementação usa o Query Builder com quatro `JOIN` e devolve `ItemDaAgenda` — um modelo de leitura com tudo que quem vai romper precisa: obra, peça, fck de projeto, carga, nota fiscal, janela. Não monta `Concretagem` nenhuma, nem instancia model do Eloquent, só para listar cilindros.
 
 ### Cascata
 
-`concretagens → elementos` usa `ON DELETE CASCADE`. A regra desejável seria `RESTRICT` — não apague elemento já concretado — mas apagar a obra cascateia para elementos, e o `RESTRICT` bloquearia a exclusão da obra inteira. Proteger o elemento concretado é política de aplicação. Está comentado no SQL.
+`concretagens → elementos` usa `cascadeOnDelete()`. A regra desejável seria `RESTRICT` — não apague elemento já concretado — mas apagar a obra cascateia para elementos, e o `RESTRICT` bloquearia a exclusão da obra inteira. Proteger o elemento concretado é política de aplicação. Está comentado na migration.
 
 ### Sobre os valores transcritos da norma
 
 Os limites de tolerância e de volume de lote foram transcritos das normas de memória e estão marcados no código com "confira com o texto vigente". Antes de qualquer uso real, cada número precisa ser conferido contra a edição atual da norma — elas são revisadas, e o sistema não substitui o texto normativo.
 
-## Etapas
+## Como o sistema foi construído
 
-1. **Base, obra e elementos estruturais** — concluída
-2. **Concretagem e cargas: a regra do abatimento** — concluída
-3. **Corpos de prova e exemplares: idades e tolerâncias de rompimento** — concluída
-4. **Persistência em SQLite** — concluída
-5. **Resultados de ensaio** — concluída
-6. **Lotes e fck estimado: a conta da NBR 12655** — concluída
-7. **Interface web: agenda do laboratório, concretagem, lote com memória de cálculo** — concluída
-8. **Não conformidade, acesso por papel e integração contínua** — concluída
+O projeto nasceu em **PHP puro**, sem framework: roteador, camada de requisição e resposta, templates, sessão com token anti-CSRF, repositórios com PDO, migrations em SQL e um executor de testes caseiro — tudo escrito à mão, em oito etapas.
+
+Depois foi **migrado para Laravel**, em seis partes, mantendo o domínio intacto: as 39 classes de `app/Dominio` são as mesmas, trocando só o namespace. As regras da NBR 12655 — a janela de rompimento, o cálculo do fck estimado, o tratamento da não conformidade — não mudaram uma linha.
+
+1. Esqueleto, domínio portado e testes de domínio em PHPUnit
+2. Persistência: migrations, models Eloquent e repositórios
+3. Interface web: rotas, controllers, Blade e as telas de obra
+4. Agenda do laboratório e a tela de concretagem
+5. Lotes, memória de cálculo e não conformidade na tela
+6. Acesso por papel, seeders e documentação final
+
+O que o framework substituiu, peça por peça — e, mais interessante, **o que ele não tocou** — está em [MIGRACAO-LARAVEL.md](MIGRACAO-LARAVEL.md). A versão em PHP puro continua no histórico do Git.
 
 ## Estado atual
 
-As oito etapas estão concluídas. O ciclo inteiro do controle tecnológico está coberto: a peça é cadastrada com a especificação do projeto; cada caminhão é julgado na chegada pelo relógio e pelo cone; os corpos de prova entram na agenda com a janela de rompimento da norma; o resultado é lançado da própria agenda e recusado fora da janela; as concretagens se juntam em lotes dentro dos limites da NBR 12655; o lote é julgado com a memória de cálculo aberta; e o lote reprovado abre uma não conformidade que só se encerra com providência favorável. Três papéis, testes de fluxo que atravessam a aplicação inteira e integração contínua em PHP 8.1 e 8.4.
+O ciclo inteiro do controle tecnológico está coberto: a peça é cadastrada com a especificação do projeto; cada caminhão é julgado na chegada pelo relógio e pelo cone; os corpos de prova entram na agenda com a janela de rompimento da norma; o resultado é lançado da própria agenda e recusado fora da janela; as concretagens se juntam em lotes dentro dos limites da NBR 12655; o lote é julgado com a memória de cálculo aberta; e o lote reprovado abre uma não conformidade que só se encerra com providência favorável. Três papéis, 257 testes que vão da entidade isolada ao fluxo HTTP completo, e integração contínua em PHP 8.3 e 8.4.
 
 O que continua verdade desde a primeira etapa: as fórmulas, tolerâncias, limites de lote e a tabela de ψ6 foram transcritos de memória e estão marcados no código. Antes de qualquer uso real, cada número precisa ser conferido contra a edição vigente das normas.

@@ -1,35 +1,30 @@
-# Migração para Laravel — em andamento
+# Migração para Laravel — concluída
 
-Esta é a branch `laravel`. A branch `main` continua com o sistema completo em
-PHP puro, funcionando, e **não é tocada** até esta migração terminar.
+Este projeto nasceu em **PHP puro**, sem framework: roteador, requisição e
+resposta, templates, sessão com token anti-CSRF, repositórios com PDO,
+migrations em SQL e um executor de testes caseiro — tudo escrito à mão. Essa
+versão está no histórico do Git, e funcionava.
 
-O objetivo é mostrar, peça por peça, **o que um framework substitui e o que
-ele não toca**. O domínio entra intacto: as 39 classes de `src/Dominio` foram
-para `app/Dominio` trocando só o namespace, de `ControleConcreto\` para
-`App\`. As regras da NBR 12655 — a janela de rompimento, o cálculo do fck
-estimado, o tratamento da não conformidade — não mudaram uma linha.
+Este documento registra a migração para Laravel, feita em seis partes. O
+objetivo era mostrar, peça por peça, **o que um framework substitui e o que
+ele não toca**. O domínio entrou intacto: as 39 classes de `src/Dominio`
+foram para `app/Dominio` trocando só o namespace, de `ControleConcreto\`
+para `App\`. As regras da NBR 12655 — a janela de rompimento, o cálculo do
+fck estimado, o tratamento da não conformidade — não mudaram uma linha.
 
-## Estado
+## As seis partes
 
-| Parte | O que entra | Situação |
-| --- | --- | --- |
-| 1 | Esqueleto, domínio portado e testes de domínio em PHPUnit | **concluída** |
-| 2 | Persistência: migrations, models Eloquent e repositórios | **concluída** |
-| 3 | Interface web: rotas, controllers, Blade e as telas de obra | **concluída** |
-| 4 | Agenda do laboratório e a tela de concretagem | **concluída** |
-| 5 | Lotes, memória de cálculo e não conformidade na tela | **concluída** |
-| 6 | Acesso por papel, seeders e documentação final | a fazer |
-
-O sistema já faz o ciclo inteiro pela tela: cadastrar a obra e as peças,
-abrir a concretagem, receber cada caminhão, moldar, lançar o resultado da
-prensa, formar o lote, julgá-lo pela norma e tratar a não conformidade até o
-desfecho. O que falta é o acesso por papel — hoje qualquer pessoa faz
-qualquer coisa —, os arquivos velhos e a documentação final.
-
-Para ver o que já existe:
+| Parte | O que entrou |
+| --- | --- |
+| 1 | Esqueleto, domínio portado e testes de domínio em PHPUnit |
+| 2 | Persistência: migrations, models Eloquent e repositórios |
+| 3 | Interface web: rotas, controllers, Blade e as telas de obra |
+| 4 | Agenda do laboratório e a tela de concretagem |
+| 5 | Lotes, memória de cálculo e não conformidade na tela |
+| 6 | Acesso por papel, seeders e limpeza |
 
 ```bash
-php artisan migrate --seed && php artisan serve
+php artisan migrate:fresh --seed && php artisan serve
 ```
 
 ## Como rodar
@@ -46,7 +41,7 @@ cp .env.example .env && php artisan key:generate
 php artisan test
 ```
 
-São 228 testes: 125 de domínio, 25 de persistência e 78 de HTTP.
+São 257 testes: 125 de domínio, 25 de persistência e 107 de HTTP.
 
 Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque não
 precisam da aplicação: não sobem o container nem tocam em banco. Os de
@@ -56,19 +51,23 @@ teste.
 
 ## O que o framework substitui
 
-| Na `main`, escrito à mão | Aqui |
+| Em PHP puro, escrito à mão | Aqui |
 | --- | --- |
 | `Roteador` com 404 e 405 | `routes/web.php` |
 | `Requisicao` / `Resposta` | `Illuminate\Http\Request` / `Response` |
 | `Visao` + `e()` | Blade |
-| Repositórios com PDO e SQL à mão | Eloquent, ligado às interfaces pelo Service Container |
+| `Montagem` instanciando tudo na mão | Service Container (`AppServiceProvider::$bindings`) |
+| Repositórios com PDO e SQL à mão | Eloquent e Query Builder, atrás das mesmas interfaces |
 | `Migrador` + arquivos `.sql` | `php artisan migrate` com o Schema Builder |
 | `Sessao` com token anti-CSRF e `hash_equals` | Sessão e `@csrf` do Laravel |
-| `Autenticador` + `Guarda` | Auth, Gates e Policies |
+| `Autenticador` com hash de isca | `Auth::attempt` com `Timebox` |
+| `Guarda` embrulhando cada ação | Gates + `can:` na rota e `@can` no template |
+| `?voltar=` validado contra redirecionamento aberto | `redirect()->intended()`, com o destino na sessão |
 | `testes/Executor.php` | PHPUnit |
 
 O que **não** muda: as entidades, as regras dentro delas, os casos de uso e as
-interfaces de repositório.
+interfaces de repositório. Nenhum arquivo de `app/Dominio` tem um `use` de
+`Illuminate`.
 
 ## Decisões da persistência
 
@@ -130,7 +129,7 @@ rodando em teste. O que se prova é que o formulário carrega o campo; o resto
 é responsabilidade do framework, que tem os próprios testes.
 
 **Componente Blade no lugar do `require` com variáveis soltas.** Os
-formulários de romper e descartar aparecem em duas telas. Na `main` isso era
+formulários de romper e descartar aparecem em duas telas. Em PHP puro isso era
 um `require` de um arquivo que lia `$base`, `$voltar`, `$podeRomper`,
 `$motivo`, `$diametros` e `$agora` do escopo de quem incluía — uma assinatura
 que só existia num comentário, e esquecer uma delas dava aviso do PHP em
@@ -139,7 +138,7 @@ valores padrão, e o que não for declarado não entra.
 
 **`whereNumber` na rota.** Sem a restrição, `/concretagens/abc` casaria com
 `/concretagens/{numero}`, o controlador receberia `(int) 'abc'` — zero — e a
-tela diria "não existe concretagem 0" em vez de devolver 404. Na `main` essa
+tela diria "não existe concretagem 0" em vez de devolver 404. Em PHP puro essa
 restrição fazia parte da expressão regular escrita à mão para cada rota.
 
 **O campo `voltar` é entrada do usuário.** O mesmo POST volta para a agenda
@@ -198,15 +197,99 @@ está dentro da janela a qualquer hora. Com a idade de 7 dias — 6 h de
 tolerância — o teste passaria de manhã e falharia à noite, que é o pior tipo
 de teste que existe.
 
-## As pastas antigas
+## Decisões do acesso
 
-`src/`, `visoes/`, `testes/`, `banco/` e `ferramentas/` continuam aqui como
-referência durante a migração — o autoload do Composer só mapeia `App\`, então
-elas não são carregadas por nada. Saem na última parte.
+**A única classe da aplicação que o framework substituiu de verdade.** O
+`Autenticador` fazia quatro coisas: buscar a conta, conferir a senha,
+regravar o hash quando o custo padrão do PHP subia, e conferir contra um
+hash de mentira quando o e-mail não existia — para que o tempo de resposta
+não entregasse quais contas existem. O `Auth::attempt` faz as quatro. As
+credenciais que não são senha viram cláusula `where`, então `ativo => true`
+basta para conta desativada não ser encontrada; o `rehashPasswordIfRequired`
+cobre o custo antigo; e o `Timebox` de 200 ms cobre o tempo de resposta
+melhor do que o hash de isca cobria, porque envolve o caminho inteiro, não
+só a conferência da senha. A classe foi apagada.
+
+**A `Conta` é o único model que faz dois papéis**, e por um motivo: o
+`SessionGuard` exige um `Authenticatable`, e não há como entregar a ele a
+entidade `Usuario` sem arrastar o framework para dentro do domínio. A
+divisão que sobra é limpa: o `Usuario` tem as regras de criação de conta —
+e-mail válido, senha de 8 caracteres —, e a `Conta` é quem o guard conhece.
+Duas sobrescritas bastam, porque a tabela é nossa: a chave é `email` e a
+coluna da senha é `hash_senha`.
+
+Detalhe que custou um erro fatal: `getAuthPasswordName()` teve que ser
+sobrescrito como **método**, não como propriedade. A trait `Authenticatable`
+já declara `$authPasswordName` com valor, e redeclarar propriedade de trait
+com outro valor é erro de composição em PHP.
+
+**A permissão continua no enum `Papel`.** Os Gates são adaptadores de duas
+linhas: `Gate::define('operar', fn (Conta $c) => $c->papel->podeOperar())`.
+O que muda em relação à `Guarda` é onde a exigência aparece — antes era uma
+closure embrulhando cada ação do controlador, agora é `can:operar` na rota e
+`@can('operar')` no template. Nenhum controlador tem `if ($papel === ...)`,
+nem antes nem depois.
+
+**O botão escondido não é a garantia.** A tela esconde o que o papel não
+pode usar, mas o POST vem do navegador. A matriz de permissão tem teste
+próprio, chamando cada rota direto com cada papel — é o `can:` que garante,
+e é ele que está sendo exercitado.
+
+**O destino pós-login saiu da URL.** Em PHP puro era `?voltar=`, que
+precisava ser validado contra redirecionamento aberto a cada uso. O
+middleware do Laravel guarda a URL pretendida na sessão e
+`redirect()->intended()` a lê de lá: o valor nunca passa pelo navegador, e
+não há o que validar.
+
+**Uma coisa o framework não dá de graça:** desativar uma conta com sessão
+aberta. O `Auth::attempt` impede o login, mas quem já estava dentro
+continuaria até a sessão expirar. Foi o que sobrou de código nosso — o
+middleware `ExigirContaAtiva`, que é o que a `Guarda` fazia ao reler o
+usuário do banco a cada requisição.
+
+## O que saiu do repositório
+
+`src/`, `visoes/`, `testes/`, `banco/` e `ferramentas/` — a versão em PHP
+puro inteira — foram removidos nesta parte. Estão no histórico do Git, que é
+onde o passado de um projeto deve ficar.
+
+Do esqueleto do Laravel também saíram coisas: o model `User`, a tabela
+`users` e `password_reset_tokens`. A conta de acesso deste sistema é a
+tabela `contas`, com e-mail como chave e papel de norma — nada a ver com a
+`users` genérica —, e não há recuperação de senha por e-mail. A tabela
+`sessions` ficou, porque é onde o login mora.
 
 ## Sobre os valores de norma
 
-Continua valendo o aviso da `main`: tolerâncias, tabela de ψ6, fórmulas e
+Continua valendo o aviso de sempre: tolerâncias, tabela de ψ6, fórmulas e
 limites de lote foram transcritos de memória e estão marcados no código.
 Antes de qualquer uso real, cada número precisa ser conferido contra a edição
 vigente das normas.
+
+## O que a migração ensinou
+
+**O framework substituiu infraestrutura, não regra.** Roteador, sessão,
+templates, container, migrations, testes — tudo isso era código nosso e
+virou configuração. O domínio atravessou a migração com uma troca de
+namespace. Foi o teste que a arquitetura em camadas existia para passar: se
+as entidades soubessem que existe PDO, nada disso teria sido possível.
+
+**A única exceção foi o `Autenticador`**, e vale entender por quê: ele não
+era regra de negócio de concreto, era mecanismo de autenticação com nome de
+caso de uso. Segurança de sessão é exatamente o tipo de coisa em que o
+framework tem mais olhos revisando do que este projeto jamais teria — o
+`Timebox` é melhor do que o hash de isca que eu tinha escrito.
+
+**Onde o framework não chegou, sobrou pouco:** um middleware de 20 linhas
+para derrubar sessão de conta desativada, um componente Blade, uma classe de
+formatação. O resto das decisões da migração foi sobre *não* deixar o
+framework entrar onde não devia — Eloquent como registro de tabela e não
+como entidade, Query Builder no agregado que atravessa quatro tabelas, e o
+Form Request parando onde a regra tem razão de norma atrás.
+
+**Três bugs apareceram no caminho, todos por rodar o código de verdade:** o
+`upsert()` com lista de colunas vazia, que o Laravel degrada para `insert` e
+estoura na chave duplicada; dois testes meus com expectativa dependente do
+relógio, que passariam de manhã e falhariam à noite; e uma providência
+datada antes da abertura da não conformidade, recusada pela própria
+entidade — o domínio reclamando do seeder, e com razão.

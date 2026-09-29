@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @use('App\Dominio\Concretagem\Concretagem')
 @use('App\Support\Formato')
+{{-- Gate::allows em vez de @can porque as condições aqui são compostas:
+     "está em andamento E tem carga aceita E quem olha pode operar". --}}
+@use('Illuminate\Support\Facades\Gate')
 
 @section('titulo', 'Concretagem nº ' . $concretagem->numero() . ' — ' . $obra->nome)
 
@@ -49,7 +52,7 @@
                 </a>
             @endif
 
-            @if ($emAndamento && $concretagem->cargasAceitas() !== [])
+            @if ($emAndamento && $concretagem->cargasAceitas() !== [] && Gate::allows('operar'))
                 <form method="post" action="{{ route('concretagens.concluir', [$obra->codigo, $concretagem->numero()]) }}"
                       onsubmit="return confirm('Concluir a concretagem nº {{ $concretagem->numero() }}? Depois disso ela não recebe mais cargas nem moldagens.');">
                     @csrf
@@ -57,7 +60,7 @@
                 </form>
             @endif
 
-            @if ($emAndamento && $concretagem->cargasAceitas() === [])
+            @if ($emAndamento && $concretagem->cargasAceitas() === [] && Gate::allows('operar'))
                 <form method="post" action="{{ route('concretagens.cancelar', [$obra->codigo, $concretagem->numero()]) }}"
                       onsubmit="return confirm('Cancelar a concretagem nº {{ $concretagem->numero() }}?');">
                     @csrf
@@ -142,7 +145,7 @@
         </div>
     @endif
 
-    @if ($emAndamento)
+    @if ($emAndamento && Gate::allows('operar'))
         <form class="formulario" method="post"
               action="{{ route('concretagens.cargas', [$obra->codigo, $concretagem->numero()]) }}">
             @csrf
@@ -315,7 +318,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if ($curando)
+                                    @if ($curando && Gate::allows('operar'))
                                         <x-acoes-do-corpo-de-prova
                                             :obra="$obra->codigo"
                                             :numero="$concretagem->numero()"

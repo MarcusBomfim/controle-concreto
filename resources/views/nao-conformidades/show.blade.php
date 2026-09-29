@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @use('App\Support\Formato')
+@use('Illuminate\Support\Facades\Gate')
 
 @section('titulo', 'Não conformidade do lote ' . $lote->numero() . ' — ' . $obra->nome)
 
@@ -112,7 +113,11 @@
         </div>
     @endif
 
-    @if ($aberta)
+    @if ($aberta && Gate::denies('decidir'))
+        <p class="dica">O tratamento da não conformidade é registrado pelo engenheiro responsável.</p>
+    @endif
+
+    @if ($aberta && Gate::allows('decidir'))
         <form class="formulario" method="post"
               action="{{ route('nao-conformidades.providencias', [$obra->codigo, $lote->numero()]) }}">
             @csrf

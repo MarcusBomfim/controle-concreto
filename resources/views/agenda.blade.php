@@ -77,6 +77,7 @@
                             <td>{{ $item->idade->rotulo() }}</td>
                             <td class="atraso">{{ Formato::dataHora($item->fimDaJanela) }}</td>
                             <td>
+                                @can('operar')
                                 <x-acoes-do-corpo-de-prova
                                     :obra="$item->obraCodigo"
                                     :numero="$item->concretagemNumero"
@@ -85,6 +86,9 @@
                                     :agora="$agora"
                                     :pode-romper="false"
                                     motivo="Passou da janela de rompimento sem ser rompido" />
+                                @else
+                                    <span class="codigo">descarte pelo laboratório</span>
+                                @endcan
                             </td>
                         </tr>
                     @endforeach
@@ -142,13 +146,17 @@
                                 <span class="codigo">previsto {{ Formato::dataHora($item->rompimentoPrevisto) }}</span>
                             </td>
                             <td>
-                                <x-acoes-do-corpo-de-prova
-                                    :obra="$item->obraCodigo"
-                                    :numero="$item->concretagemNumero"
-                                    :identificacao="$item->identificacao"
-                                    voltar="/"
-                                    :agora="$agora"
-                                    :pode-romper="true" />
+                                @can('operar')
+                                    <x-acoes-do-corpo-de-prova
+                                        :obra="$item->obraCodigo"
+                                        :numero="$item->concretagemNumero"
+                                        :identificacao="$item->identificacao"
+                                        voltar="/"
+                                        :agora="$agora"
+                                        :pode-romper="true" />
+                                @else
+                                    <span class="codigo">registro pelo laboratório</span>
+                                @endcan
                             </td>
                         </tr>
                     @endforeach

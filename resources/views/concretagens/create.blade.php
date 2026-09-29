@@ -14,8 +14,12 @@
 
     @if ($elementos === [])
         <p class="cartao cartao--vazio">
-            Esta obra não tem elementos cadastrados. A concretagem é sempre de uma peça —
-            <a href="{{ route('elementos.create', $obra->codigo) }}">cadastre a primeira</a>.
+            Esta obra não tem elementos cadastrados. A concretagem é sempre de uma peça.
+            @can('decidir')
+                <a href="{{ route('elementos.create', $obra->codigo) }}">Cadastre a primeira</a>.
+            @else
+                O cadastro de peças é do engenheiro responsável.
+            @endcan
         </p>
     @else
         <form class="formulario" method="post" action="{{ route('concretagens.store', $obra->codigo) }}">
