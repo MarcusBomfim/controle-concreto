@@ -108,9 +108,19 @@ final class RepositorioDeConcretagensEmBanco implements RepositorioDeConcretagen
                     ->on('e.codigo', '=', 'c.elemento_codigo');
             })
             ->select(
-                'c.obra_codigo', 'c.numero', 'c.data', 'c.fornecedor', 'c.responsavel', 'c.situacao',
-                'e.codigo', 'e.tipo', 'e.descricao', 'e.pavimento', 'e.fck',
-                'e.abatimento_mm', 'e.volume_previsto_m3',
+                'c.obra_codigo',
+                'c.numero',
+                'c.data',
+                'c.fornecedor',
+                'c.responsavel',
+                'c.situacao',
+                'e.codigo',
+                'e.tipo',
+                'e.descricao',
+                'e.pavimento',
+                'e.fck',
+                'e.abatimento_mm',
+                'e.volume_previsto_m3',
             );
     }
 
@@ -301,9 +311,17 @@ final class RepositorioDeConcretagensEmBanco implements RepositorioDeConcretagen
                     ->on('cp.idade_dias', '=', 'e.idade_dias');
             })
             ->select(
-                'e.concretagem_numero', 'e.carga_numero', 'e.idade_dias', 'e.moldado_em',
-                'cp.letra', 'cp.identificacao', 'cp.situacao',
-                'cp.rompido_em', 'cp.carga_kn', 'cp.diametro_mm', 'cp.motivo_descarte',
+                'e.concretagem_numero',
+                'e.carga_numero',
+                'e.idade_dias',
+                'e.moldado_em',
+                'cp.letra',
+                'cp.identificacao',
+                'cp.situacao',
+                'cp.rompido_em',
+                'cp.carga_kn',
+                'cp.diametro_mm',
+                'cp.motivo_descarte',
             )
             ->where('e.obra_codigo', $obraCodigo)
             ->whereIn('e.concretagem_numero', $numeros)

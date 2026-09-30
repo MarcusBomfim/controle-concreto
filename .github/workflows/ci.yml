@@ -41,6 +41,10 @@ jobs:
           cp .env.example .env
           php artisan key:generate --ansi
 
+      # PSR-12, configurado em pint.json. --test só confere, não altera.
+      - name: Estilo
+        run: ./vendor/bin/pint --test
+
       # Os testes de domínio não tocam em banco; os de feature usam SQLite
       # em memória, configurado no phpunit.xml. Nada a preparar além disto.
       - name: Testes

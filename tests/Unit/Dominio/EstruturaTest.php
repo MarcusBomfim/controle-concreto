@@ -8,7 +8,6 @@ use App\Dominio\Concreto\Abatimento;
 use App\Dominio\Concreto\ClasseDeResistencia;
 use App\Dominio\Estrutura\ElementoEstrutural;
 use App\Dominio\Estrutura\TipoDeElemento;
-use App\Dominio\ExcecaoDeDominio;
 use App\Dominio\Obra\Obra;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -153,6 +152,6 @@ final class EstruturaTest extends TestCase
     #[Test]
     public function recusa_volume_zerado(): void
     {
-        $this->recusa( fn () => $this->lajeDeTeste(0.0), 'Volume previsto');
+        $this->recusa(fn () => $this->lajeDeTeste(0.0), 'Volume previsto');
     }
 }

@@ -4,16 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Dominio;
 
-use App\Dominio\Concretagem\Concretagem;
 use App\Dominio\Concreto\Abatimento;
 use App\Dominio\Concreto\ClasseDeResistencia;
-use App\Dominio\Ensaio\DiametroDoCorpoDeProva;
 use App\Dominio\Ensaio\IdadeDeEnsaio;
-use App\Dominio\Ensaio\ResultadoDeEnsaio;
 use App\Dominio\Estrutura\ElementoEstrutural;
 use App\Dominio\Estrutura\GrupoDeSolicitacao;
 use App\Dominio\Estrutura\TipoDeElemento;
-use App\Dominio\ExcecaoDeDominio;
 use App\Dominio\Lote\CondicaoDePreparo;
 use App\Dominio\Lote\Lote;
 use App\Dominio\Lote\SituacaoDoLote;
@@ -54,7 +50,7 @@ final class LoteTest extends TestCase
         $emAndamento->definirNumero(9);
         $this->chegaCarga($emAndamento, 100);
 
-        $this->recusa( fn () => $lote->adicionarConcretagem($emAndamento), 'Só concretagem concluída');
+        $this->recusa(fn () => $lote->adicionarConcretagem($emAndamento), 'Só concretagem concluída');
     }
 
     #[Test]
@@ -63,7 +59,7 @@ final class LoteTest extends TestCase
         $lote = $this->loteC30();
         $pilaresC35 = $this->concretagemComResultados(2, [40.0], $this->pilaresDeTeste());
 
-        $this->recusa( fn () => $lote->adicionarConcretagem($pilaresC35), 'Um lote tem um fck só');
+        $this->recusa(fn () => $lote->adicionarConcretagem($pilaresC35), 'Um lote tem um fck só');
     }
 
     #[Test]
@@ -86,7 +82,7 @@ final class LoteTest extends TestCase
         $c = $this->concretagemComResultados(1, [32.0]);
         $lote->adicionarConcretagem($c);
 
-        $this->recusa( fn () => $lote->adicionarConcretagem($c), 'já está neste lote');
+        $this->recusa(fn () => $lote->adicionarConcretagem($c), 'já está neste lote');
     }
 
     #[Test]
@@ -175,7 +171,7 @@ final class LoteTest extends TestCase
         $this->assertFalse($lote->podeSerJulgado(), 'tem pendente');
         $this->assertSame(1, count($lote->exemplaresPendentes()));
 
-        $this->recusa( fn () => $lote->julgar($this->momento('2026-04-10 10:00')), 'aguardando rompimento');
+        $this->recusa(fn () => $lote->julgar($this->momento('2026-04-10 10:00')), 'aguardando rompimento');
     }
 
     #[Test]
@@ -199,7 +195,7 @@ final class LoteTest extends TestCase
     #[Test]
     public function lote_vazio_nao_julga(): void
     {
-        $this->recusa( fn () => $this->loteC30()->julgar($this->momento('2026-04-10 10:00')), 'está vazio');
+        $this->recusa(fn () => $this->loteC30()->julgar($this->momento('2026-04-10 10:00')), 'está vazio');
     }
 
     #[Test]
@@ -209,8 +205,8 @@ final class LoteTest extends TestCase
         $lote->adicionarConcretagem($this->concretagemComResultados(1, [32.4, 29.8, 31.1, 33.6, 30.5, 35.0]));
         $lote->julgar($this->momento('2026-04-10 10:00'));
 
-        $this->recusa( fn () => $lote->julgar($this->momento('2026-04-11 10:00')), 'já foi julgado');
-        $this->recusa( fn () => $lote->adicionarConcretagem($this->concretagemComResultados(2, [30.0])), 'já foi julgado');
+        $this->recusa(fn () => $lote->julgar($this->momento('2026-04-11 10:00')), 'já foi julgado');
+        $this->recusa(fn () => $lote->adicionarConcretagem($this->concretagemComResultados(2, [30.0])), 'já foi julgado');
     }
 
     #[Test]

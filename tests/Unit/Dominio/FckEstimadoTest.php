@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Dominio;
 
-use App\Dominio\ExcecaoDeDominio;
 use App\Dominio\Lote\CalculadoraDeFckEstimado;
 use App\Dominio\Lote\CondicaoDePreparo;
 use App\Dominio\Lote\Psi6;
@@ -50,7 +49,7 @@ final class FckEstimadoTest extends TestCase
     #[Test]
     public function recusa_n_menor_que_2(): void
     {
-        $this->recusa( fn () => Psi6::para(1, CondicaoDePreparo::A));
+        $this->recusa(fn () => Psi6::para(1, CondicaoDePreparo::A));
     }
 
     // ---------- fck estimado: amostragem parcial ----------

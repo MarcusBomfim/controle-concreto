@@ -10,7 +10,6 @@ use App\Dominio\Ensaio\Exemplar;
 use App\Dominio\Ensaio\IdadeDeEnsaio;
 use App\Dominio\Ensaio\ResultadoDeEnsaio;
 use App\Dominio\Ensaio\SituacaoDoCorpoDeProva;
-use App\Dominio\ExcecaoDeDominio;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Tests\Apoio\ObjetosDeExemplo;
@@ -64,7 +63,7 @@ final class ResultadoTest extends TestCase
     #[Test]
     public function recusa_diametro_fora_da_norma(): void
     {
-        $this->recusa( fn () => DiametroDoCorpoDeProva::deMm(120), 'prevê 100 ou 150');
+        $this->recusa(fn () => DiametroDoCorpoDeProva::deMm(120), 'prevê 100 ou 150');
     }
 
     // ---------- Resultado de ensaio: a conta da prensa ----------
@@ -226,7 +225,7 @@ final class ResultadoTest extends TestCase
     {
         $cp = $this->cpDe28();
 
-        $this->recusa( fn () => $cp->descartar('   '), 'Motivo do descarte é obrigatório');
+        $this->recusa(fn () => $cp->descartar('   '), 'Motivo do descarte é obrigatório');
     }
 
     #[Test]
@@ -238,7 +237,7 @@ final class ResultadoTest extends TestCase
             $this->momento('2026-04-07 11:00'),
         );
 
-        $this->recusa( fn () => $cp->descartar('tarde demais'), 'não pode ser descartado');
+        $this->recusa(fn () => $cp->descartar('tarde demais'), 'não pode ser descartado');
     }
 
     // ---------- Exemplar: a resistência é a maior ----------

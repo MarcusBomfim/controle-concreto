@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Dominio;
 
-use App\Dominio\ExcecaoDeDominio;
 use App\Dominio\NaoConformidade\Desfecho;
 use App\Dominio\NaoConformidade\NaoConformidade;
 use App\Dominio\NaoConformidade\Providencia;
@@ -35,8 +34,7 @@ final class NaoConformidadeTest extends TestCase
         ResultadoDaProvidencia $resultado,
         string $data = '2026-04-15',
         ?float $fck = null,
-    ): Providencia
-    {
+    ): Providencia {
         return new Providencia(
             $tipo,
             $this->momento($data),

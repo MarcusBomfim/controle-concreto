@@ -14,8 +14,7 @@ use Illuminate\Support\Facades\Schema;
  * pelo Schema Builder. É o caso em que o framework não custa nada e lê
  * melhor.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('obras', function (Blueprint $tabela): void {

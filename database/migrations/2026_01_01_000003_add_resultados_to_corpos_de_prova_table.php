@@ -17,8 +17,7 @@ use Illuminate\Support\Facades\Schema;
  * separado. É a mesma garantia que o domínio já dá, repetida no banco para
  * que nenhum caminho escape.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::table('corpos_de_prova', function (Blueprint $tabela): void {

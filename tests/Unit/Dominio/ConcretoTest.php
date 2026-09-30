@@ -6,7 +6,6 @@ namespace Tests\Unit\Dominio;
 
 use App\Dominio\Concreto\Abatimento;
 use App\Dominio\Concreto\ClasseDeResistencia;
-use App\Dominio\ExcecaoDeDominio;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Tests\Apoio\ObjetosDeExemplo;
@@ -40,8 +39,8 @@ final class ConcretoTest extends TestCase
     public function recusa_fck_fora_das_classes_da_norma(): void
     {
         // A NBR 8953 não tem C27, e acima de C60 pula de 10 em 10: não há C65.
-        $this->recusa( fn () => ClasseDeResistencia::deFck(27), 'Não existe classe');
-        $this->recusa( fn () => ClasseDeResistencia::deFck(65), 'Não existe classe');
+        $this->recusa(fn () => ClasseDeResistencia::deFck(27), 'Não existe classe');
+        $this->recusa(fn () => ClasseDeResistencia::deFck(65), 'Não existe classe');
     }
 
     #[Test]
@@ -93,8 +92,8 @@ final class ConcretoTest extends TestCase
     #[Test]
     public function recusa_abatimento_fora_da_faixa_usual(): void
     {
-        $this->recusa( fn () => new Abatimento(5), 'fora da faixa');
-        $this->recusa( fn () => new Abatimento(300), 'fora da faixa');
+        $this->recusa(fn () => new Abatimento(5), 'fora da faixa');
+        $this->recusa(fn () => new Abatimento(300), 'fora da faixa');
     }
 
     #[Test]

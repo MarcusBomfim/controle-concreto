@@ -9,7 +9,6 @@ use App\Dominio\Concretagem\Concretagem;
 use App\Dominio\Concretagem\MotivoDeDevolucao;
 use App\Dominio\Concretagem\SituacaoDaConcretagem;
 use App\Dominio\Ensaio\IdadeDeEnsaio;
-use App\Dominio\ExcecaoDeDominio;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -211,7 +210,7 @@ final class ConcretagemTest extends TestCase
         $this->chegaCarga($concretagem, 100);
         $concretagem->moldar(1, $this->hora('09:00'), [IdadeDeEnsaio::SeteDias]);
 
-        $this->recusa( fn () => $concretagem->concluir(), 'Nenhum exemplar de 28 dias');
+        $this->recusa(fn () => $concretagem->concluir(), 'Nenhum exemplar de 28 dias');
     }
 
     #[Test]
@@ -220,7 +219,7 @@ final class ConcretagemTest extends TestCase
         $concretagem = $this->concretagemDeTeste();
         $this->chegaCarga($concretagem, 140);
 
-        $this->recusa( fn () => $concretagem->concluir(), 'Não há carga aceita');
+        $this->recusa(fn () => $concretagem->concluir(), 'Não há carga aceita');
     }
 
     #[Test]
@@ -231,7 +230,7 @@ final class ConcretagemTest extends TestCase
         $concretagem->moldar(1, $this->hora('09:00'), [IdadeDeEnsaio::VinteEOitoDias]);
         $concretagem->concluir();
 
-        $this->recusa( fn () => $this->chegaCarga($concretagem, 100, notaFiscal: 'NF-2'), 'não recebe mais cargas');
+        $this->recusa(fn () => $this->chegaCarga($concretagem, 100, notaFiscal: 'NF-2'), 'não recebe mais cargas');
     }
 
     #[Test]
@@ -251,7 +250,7 @@ final class ConcretagemTest extends TestCase
         $concretagem = $this->concretagemDeTeste();
         $this->chegaCarga($concretagem, 100);
 
-        $this->recusa( fn () => $concretagem->cancelar(), 'não se cancela');
+        $this->recusa(fn () => $concretagem->cancelar(), 'não se cancela');
     }
 
     #[Test]
@@ -262,6 +261,6 @@ final class ConcretagemTest extends TestCase
         $concretagem->moldar(1, $this->hora('09:00'), [IdadeDeEnsaio::VinteEOitoDias]);
         $concretagem->concluir();
 
-        $this->recusa( fn () => $concretagem->concluir(), 'não é possível concluir');
+        $this->recusa(fn () => $concretagem->concluir(), 'não é possível concluir');
     }
 }

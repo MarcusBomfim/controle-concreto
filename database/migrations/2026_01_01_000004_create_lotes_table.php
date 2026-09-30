@@ -10,8 +10,7 @@ use Illuminate\Support\Facades\Schema;
 /*
  * O lote de aceitação da NBR 12655 e as concretagens que o compõem.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('lotes', function (Blueprint $tabela): void {

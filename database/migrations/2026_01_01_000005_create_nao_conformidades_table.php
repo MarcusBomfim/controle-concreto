@@ -13,8 +13,7 @@ use Illuminate\Support\Facades\Schema;
  * Uma não conformidade por lote: a chave primária é a mesma do lote, e a
  * chave estrangeira garante que ela só existe para lote que existe.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('nao_conformidades', function (Blueprint $tabela): void {

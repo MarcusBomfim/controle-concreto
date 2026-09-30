@@ -8,7 +8,6 @@ use App\Dominio\Ensaio\CorpoDeProva;
 use App\Dominio\Ensaio\Exemplar;
 use App\Dominio\Ensaio\IdadeDeEnsaio;
 use App\Dominio\Ensaio\SituacaoDoCorpoDeProva;
-use App\Dominio\ExcecaoDeDominio;
 use DateInterval;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -46,7 +45,7 @@ final class EnsaioTest extends TestCase
     #[Test]
     public function recusa_idade_fora_das_previstas(): void
     {
-        $this->recusa( fn () => IdadeDeEnsaio::deDias(14), 'Não há ensaio previsto');
+        $this->recusa(fn () => IdadeDeEnsaio::deDias(14), 'Não há ensaio previsto');
     }
 
     // ---------- Corpo de prova: a janela de rompimento ----------
@@ -194,7 +193,7 @@ final class EnsaioTest extends TestCase
         $concretagem = $this->concretagemDeTeste();
         $this->chegaCarga($concretagem, 100);
 
-        $this->recusa( fn () => $this->moldaPadrao($concretagem, 7), 'Não existe carga');
+        $this->recusa(fn () => $this->moldaPadrao($concretagem, 7), 'Não existe carga');
     }
 
     #[Test]
@@ -240,7 +239,7 @@ final class EnsaioTest extends TestCase
         $concretagem = $this->concretagemDeTeste();
         $this->chegaCarga($concretagem, 100);
 
-        $this->recusa( fn () => $concretagem->moldar(1, $this->hora('09:00'), []), 'ao menos uma idade');
+        $this->recusa(fn () => $concretagem->moldar(1, $this->hora('09:00'), []), 'ao menos uma idade');
     }
 
     #[Test]
@@ -267,6 +266,6 @@ final class EnsaioTest extends TestCase
         $this->moldaPadrao($concretagem, 1);
         $concretagem->concluir();
 
-        $this->recusa( fn () => $this->moldaPadrao($concretagem, 2), 'não é possível moldar');
+        $this->recusa(fn () => $this->moldaPadrao($concretagem, 2), 'não é possível moldar');
     }
 }

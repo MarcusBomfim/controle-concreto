@@ -22,8 +22,7 @@ use Illuminate\Support\Facades\Schema;
  * conta é o e-mail, então ela nunca é preenchida — o Laravel só a usa para
  * facilitar consultas administrativas, e a sessão funciona sem ela.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('sessions', function (Blueprint $tabela): void {

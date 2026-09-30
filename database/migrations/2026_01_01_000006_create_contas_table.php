@@ -16,8 +16,7 @@ use Illuminate\Support\Facades\Schema;
  * O e-mail é a chave e é guardado em minúsculas pela entidade, então a busca
  * não precisa de LOWER() nem de índice funcional.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('contas', function (Blueprint $tabela): void {

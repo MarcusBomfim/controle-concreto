@@ -15,8 +15,7 @@ use Illuminate\Support\Facades\Schema;
  * por carga e idade" — não é possível moldar dois exemplares de 28 dias da
  * mesma carga, e isso não depende de nenhuma verificação em PHP.
  */
-return new class extends Migration
-{
+return new class () extends Migration {
     public function up(): void
     {
         Schema::create('concretagens', function (Blueprint $tabela): void {

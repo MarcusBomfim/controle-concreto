@@ -70,6 +70,12 @@ Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque
 
 Os de HTTP sobem a aplicação inteira e atravessam roteador, middleware de permissão, Form Request, controlador e Blade: o dia de concretagem pelos formulários, o resultado lançado da agenda, o lote julgado com a conta aberta, a não conformidade tratada e encerrada, e o 403 do gestor.
 
+O estilo é PSR-12, conferido pelo Pint — o mesmo comando que a integração contínua roda:
+
+```bash
+./vendor/bin/pint --test
+```
+
 ## Estrutura
 
 ```text
