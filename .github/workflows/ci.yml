@@ -41,6 +41,12 @@ jobs:
           cp .env.example .env
           php artisan key:generate --ansi
 
+      # Confere o composer.lock contra a base de CVEs do Packagist.
+      # Dependência vulnerável é a porta de entrada que não aparece em
+      # revisão de código nenhuma — só um robô olhando todo dia pega.
+      - name: Dependências
+        run: composer audit
+
       # PSR-12, configurado em pint.json. --test só confere, não altera.
       - name: Estilo
         run: ./vendor/bin/pint --test

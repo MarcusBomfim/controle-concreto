@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Models\Conta;
+use App\Support\RegistroDeSeguranca;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,8 @@ final class ExigirContaAtiva
         $conta = Auth::user();
 
         if ($conta instanceof Conta && !$conta->ativo) {
+            RegistroDeSeguranca::contaDesativada((string) $conta->email, $requisicao);
+
             Auth::logout();
             $requisicao->session()->invalidate();
             $requisicao->session()->regenerateToken();

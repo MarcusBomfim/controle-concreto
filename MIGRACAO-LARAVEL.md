@@ -41,7 +41,7 @@ cp .env.example .env && php artisan key:generate
 php artisan test
 ```
 
-São 257 testes: 125 de domínio, 25 de persistência e 107 de HTTP.
+São 265 testes: 125 de domínio, 25 de persistência e 115 de HTTP.
 
 Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque não
 precisam da aplicação: não sobem o container nem tocam em banco. Os de

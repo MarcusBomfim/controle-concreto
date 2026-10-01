@@ -65,6 +65,25 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /*
+         * Eventos de acesso, em arquivo próprio e com rotação diária.
+         *
+         * Separado do log da aplicação de propósito: o `laravel.log` enche
+         * de ruído e é o primeiro a ser apagado quando falta disco. Quem
+         * procura "quem entrou nesta conta em março" não deveria ter que
+         * garimpar no meio de stack trace. 90 dias de retenção.
+         *
+         * O que entra aqui está em App\Support\RegistroDeSeguranca, que é
+         * também a garantia de que senha nenhuma chega neste arquivo.
+         */
+        'seguranca' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/seguranca.log'),
+            'level' => 'info',
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),

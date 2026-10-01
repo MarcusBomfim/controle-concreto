@@ -64,7 +64,7 @@ A carga de demonstração tem datas relativas a hoje: corpos de prova vencidos, 
 php artisan test
 ```
 
-São 257 testes: 125 de domínio, 25 de persistência e 107 de HTTP.
+São 265 testes: 125 de domínio, 25 de persistência e 115 de HTTP.
 
 Os de domínio estendem o `TestCase` do PHPUnit — não o do Laravel — porque não precisam da aplicação: não sobem o container nem tocam em banco. Os de persistência e os de HTTP usam `RefreshDatabase`, que aplica as migrations reais num SQLite em memória e desfaz tudo ao fim de cada teste.
 
@@ -273,7 +273,28 @@ Três papéis, que espelham quem circula no controle tecnológico:
 
 As permissões moram no enum `Papel` — `podeOperar()`, `podeDecidir()`. Dois Gates as expõem ao framework, e as rotas dizem qual exigem: `can:operar`, `can:decidir`. Nenhum controlador tem `if ($papel === ...)`. A interface esconde os botões que o papel não pode usar, mas isso é cortesia: quem enviar o POST direto recebe 403, porque a permissão é conferida no servidor, a cada requisição.
 
-Senha só como hash bcrypt, login com uma mensagem única para e-mail e senha errados, resposta de duração fixa para e-mail existente e inexistente demorarem o mesmo, sessão regenerada no login, `@csrf` em todo formulário e destino pós-login guardado na sessão — nunca na URL. Conta desativada não entra, e desativá-la derruba a sessão já aberta. O que não há: limite de tentativas de login e recuperação de senha — próximos passos se o sistema for para produção.
+Senha só como hash bcrypt, login com uma mensagem única para e-mail e senha errados, resposta de duração fixa para e-mail existente e inexistente demorarem o mesmo, sessão regenerada no login, `@csrf` em todo formulário e destino pós-login guardado na sessão — nunca na URL. Conta desativada não entra, e desativá-la derruba a sessão já aberta.
+
+### Limite de tentativas
+
+Senha boa não protege de nada se der para tentar um milhão de vezes. São dois contadores:
+
+| Contador | Limite | Por quê |
+| --- | --- | --- |
+| e-mail + IP | 5 por minuto | segura a força bruta contra uma conta |
+| IP sozinho | 20 em 5 minutos | pega quem varre muitos e-mails do mesmo lugar |
+
+Contar só por e-mail deixaria qualquer um trancar a conta alheia de fora — negação de serviço disfarçada de segurança. Contar só pelo par e-mail + IP deixaria passar quem troca o e-mail a cada tentativa. Os dois juntos fecham os dois buracos.
+
+O limite é conferido **antes** de comparar a senha: bloqueado não entra nem acertando. Entrar zera o contador da conta; o do IP continua correndo.
+
+### Registro de acesso
+
+`storage/logs/seguranca.log`, em arquivo próprio, com rotação diária e 90 dias de retenção: login aceito, login recusado, bloqueio por tentativas, saída, conta desativada e acesso negado por papel. Cada linha leva e-mail, IP e navegador.
+
+Tudo passa por `App\Support\RegistroDeSeguranca`, e o motivo de ser uma classe só é esse: é o que garante, num lugar, que **a senha nunca chega ao arquivo**. Espalhado pelos controladores, um `Log::info($request->all())` distraído transforma o log numa lista de credenciais. Tem teste provando que ela não vaza.
+
+O que ainda não há: MFA e recuperação de senha. Nenhum dos dois é trivial — MFA pede fluxo de inscrição, códigos de recuperação e armazenamento do segredo; recuperação de senha pede servidor de e-mail. São passos para quando o sistema for a produção de verdade, não itens de uma lista de conferência.
 
 ## Banco de dados
 
@@ -314,6 +335,6 @@ O que o framework substituiu, peça por peça — e, mais interessante, **o que 
 
 ## Estado atual
 
-O ciclo inteiro do controle tecnológico está coberto: a peça é cadastrada com a especificação do projeto; cada caminhão é julgado na chegada pelo relógio e pelo cone; os corpos de prova entram na agenda com a janela de rompimento da norma; o resultado é lançado da própria agenda e recusado fora da janela; as concretagens se juntam em lotes dentro dos limites da NBR 12655; o lote é julgado com a memória de cálculo aberta; e o lote reprovado abre uma não conformidade que só se encerra com providência favorável. Três papéis, 257 testes que vão da entidade isolada ao fluxo HTTP completo, e integração contínua em PHP 8.3 e 8.4.
+O ciclo inteiro do controle tecnológico está coberto: a peça é cadastrada com a especificação do projeto; cada caminhão é julgado na chegada pelo relógio e pelo cone; os corpos de prova entram na agenda com a janela de rompimento da norma; o resultado é lançado da própria agenda e recusado fora da janela; as concretagens se juntam em lotes dentro dos limites da NBR 12655; o lote é julgado com a memória de cálculo aberta; e o lote reprovado abre uma não conformidade que só se encerra com providência favorável. Três papéis, limite de tentativas no login, registro de acesso, 265 testes que vão da entidade isolada ao fluxo HTTP completo, e integração contínua em PHP 8.3 e 8.4 — com conferência de estilo e auditoria de dependências.
 
 O que continua verdade desde a primeira etapa: as fórmulas, tolerâncias, limites de lote e a tabela de ψ6 foram transcritos de memória e estão marcados no código. Antes de qualquer uso real, cada número precisa ser conferido contra a edição vigente das normas.

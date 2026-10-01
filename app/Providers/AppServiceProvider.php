@@ -20,6 +20,7 @@ use App\Persistencia\RepositorioDeObrasEmBanco;
 use App\Persistencia\RepositorioDeUsuariosEmBanco;
 use App\Models\Conta;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -70,5 +71,18 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::define('operar', static fn (Conta $conta): bool => $conta->papel->podeOperar());
         Gate::define('decidir', static fn (Conta $conta): bool => $conta->papel->podeDecidir());
+
+        /*
+         * Em produção, toda URL gerada sai como https.
+         *
+         * Isto não "liga o HTTPS" — quem termina TLS é o servidor ou o
+         * proxy na frente, e é lá que mora o certificado e o HSTS. O que
+         * esta linha evita é o vazamento clássico por trás de proxy: a
+         * aplicação recebe a requisição em http, monta `route()` e `asset()`
+         * com http, e o formulário de login acaba postando em texto claro.
+         */
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
     }
 }
